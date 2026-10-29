@@ -28,7 +28,7 @@ FRED_SERIES = ["DGS2", "DGS10", "VIXCLS", "BAA10Y", "DFF"]
 
 def fetch_prices() -> pd.DataFrame:
     """Daily adjusted close for each ticker, one column per ticker."""
-    df = yf.download(TICKERS, start=START, end=END, auto_adjust=True, progress=False)
+    df = yf.download(TICKERS, start=START, end=END, auto_adjust=True, progress=False, threads=False)
     return df["Close"]
 
 
@@ -42,7 +42,7 @@ def fetch_fred() -> pd.DataFrame:
         s = pd.read_csv(FRED_CSV.format(series), index_col=0, parse_dates=True, na_values=".")
         s.columns = [series]
         frames.append(s)
-    df = pd.concat(frames, axis=1)
+        df = pd.concat(frames, axis=1, sort=True)
     return df.loc[START:END]
 
 
