@@ -42,7 +42,7 @@ def fetch_fred() -> pd.DataFrame:
         s = pd.read_csv(FRED_CSV.format(series), index_col=0, parse_dates=True, na_values=".")
         s.columns = [series]
         frames.append(s)
-        df = pd.concat(frames, axis=1, sort=True)
+    df = pd.concat(frames, axis=1, sort=True)
     return df.loc[START:END]
 
 
