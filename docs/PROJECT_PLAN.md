@@ -2,6 +2,8 @@
 
 This is **the** plan: where ARCHITECTURE.md or older notes disagree with it, this file wins. It merges the data and weeks 6–9 plan already on `main` (club presentation in week 10) with the publication plan in [ARCHITECTURE.md](ARCHITECTURE.md), which is the deep reference for *why* each choice was made.
 
+**Stage 1 (club presentation) has its own detailed plan: [STAGE1_PLAN.md](STAGE1_PLAN.md).** That file wins for weeks 6–10.
+
 The work happens in two stages, built on one codebase:
 
 | | **Stage 1: Club result** | **Stage 2: Paper** |

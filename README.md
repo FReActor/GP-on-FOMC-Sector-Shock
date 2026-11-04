@@ -2,7 +2,10 @@
 
 SFIC Fall 2026: can genetic programming predict how sectors react to unexpected macro shocks (starting with FOMC rate surprises)?
 
-Full architecture, research design and publication plan: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Plans:
+- Club presentation (weeks 6–10): [docs/STAGE1_PLAN.md](docs/STAGE1_PLAN.md)
+- Full two-stage plan to the GECCO 2027 paper: [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)
+- Architecture and research design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Layout
 
