@@ -2,6 +2,8 @@
 
 SFIC Fall 2026: can genetic programming predict how sectors react to unexpected macro shocks (starting with FOMC rate surprises)?
 
+Full architecture, research design and publication plan: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Layout
 
 ```
