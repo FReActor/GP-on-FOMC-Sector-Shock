@@ -16,6 +16,8 @@ src/fetch_data.py      download prices (yfinance) and macro series (FRED)
 src/build_events.py    one row per shock event
 src/build_returns.py   asset returns around each event (target)
 src/build_features.py  inputs known before each event
+src/config.py          shared paths, split (A/B), tickers, seeds: import from here
+src/data.py            load_panel() and the shared metrics (r2_oos, rmse, hit_rate)
 src/models/            models (linear baseline, GP, ...)
 notebooks/         exploration
 docs/lit_review/   literature review
@@ -38,6 +40,7 @@ python -m src.fetch_data
 python -m src.build_events
 python -m src.build_returns
 python -m src.build_features
+python -m src.models.gp --version v0   # ~25 min on 8 cores; resumes if interrupted
 ```
 
 ## Working together
