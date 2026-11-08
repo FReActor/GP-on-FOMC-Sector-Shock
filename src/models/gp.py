@@ -16,6 +16,7 @@ Outputs (version v0 shown):
     results/gp_v0.csv              one row per (ticker, horizon): median r2_oos across seeds,
                                    r2_oos_min / r2_oos_max, rmse_oos, hit_rate, complexity
     results/gp_v0_seeds.csv        one row per (ticker, horizon, seed), with the formula
+    results/gp_formulas.csv        version, ticker, horizon, seed, parsimony, length, formula (sympy)
     results/preds/gp_v0.csv        pooled model predictions: event_date, ticker, horizon, split, seed, y, yhat
     results/preds/gp_v0_ticker.csv same, from the per-ticker models
 
@@ -30,6 +31,7 @@ from concurrent.futures.process import BrokenProcessPool
 
 import numpy as np
 import pandas as pd
+import sympy as sp
 from gplearn.genetic import SymbolicRegressor
 
 from src import config
@@ -112,6 +114,33 @@ def score(preds: pd.DataFrame) -> dict:
             "rmse_oos": rmse(te["y"], te["yhat"]), "hit_rate": hit_rate(te["y"], te["yhat"])}
 
 
+CONV = {"add": lambda a, b: a + b, "sub": lambda a, b: a - b, "mul": lambda a, b: a * b,
+        "div": lambda a, b: a / b, "neg": lambda a: -a, "abs": sp.Abs, "max": sp.Max, "min": sp.Min}
+MAX_SIMPLIFY_LENGTH = 60  # sympy.simplify gets very slow on bloated programs
+
+
+def to_formula(program: str, cols: list[str], length: int | None = None) -> str:
+    """gplearn program -> readable sympy formula with feature names instead of X0, X1, ...
+
+    Note: gplearn's div is protected (returns 1 when |denominator| < 0.001); sympy shows plain a/b.
+    """
+    names = {f"X{i}": sp.Symbol(c) for i, c in enumerate(cols)}
+    expr = sp.sympify(program, locals={**CONV, **names})
+    if length is None or length <= MAX_SIMPLIFY_LENGTH:
+        expr = sp.simplify(expr)
+    return str(sp.N(expr, 4))
+
+
+def save_formulas(seeds: pd.DataFrame, version: str) -> None:
+    """Write results/gp_formulas.csv (all versions in one file; this version's rows replaced)."""
+    path = config.RESULTS / "gp_formulas.csv"
+    new = seeds.assign(version=version)[["version", "ticker", "horizon", "seed", "parsimony", "length", "formula"]]
+    if path.exists():
+        old = pd.read_csv(path)
+        new = pd.concat([old[old["version"] != version], new], ignore_index=True)
+    new.to_csv(path, index=False)
+
+
 def _cache_path(version, scope, horizon, seed):
     return config.PROCESSED / "gp_cache" / f"{version}_split{config.SPLIT}" / f"{scope}_{horizon}_{seed}.pkl"
 
@@ -154,6 +183,8 @@ def run(version: str, jobs: int, fresh: bool = False) -> None:
         raise RuntimeError("GP run failed 3 times; rerun the command to resume from the cache")
 
     seeds = pd.DataFrame([row for _, _, row in out])
+    cols_in = inputs_for(version)
+    seeds["formula"] = [to_formula(p, cols_in, n) for p, n in zip(seeds["program"], seeds["length"])]
     pooled_preds = pd.concat([p for s, p, _ in out if s == "POOLED"], ignore_index=True)
     ticker_preds = pd.concat([p for s, p, _ in out if s != "POOLED"], ignore_index=True)
 
@@ -171,11 +202,12 @@ def run(version: str, jobs: int, fresh: bool = False) -> None:
     seeds.to_csv(config.RESULTS / f"gp_{version}_seeds.csv", index=False)
     pooled_preds.to_csv(config.RESULTS / "preds" / f"gp_{version}.csv", index=False)
     ticker_preds.to_csv(config.RESULTS / "preds" / f"gp_{version}_ticker.csv", index=False)
+    save_formulas(seeds, version)
 
     cols = ["ticker", "horizon", "r2_oos", "r2_oos_min", "r2_oos_max", "rmse_oos", "hit_rate", "complexity", "parsimony_mode"]
     with pd.option_context("display.width", 200, "display.float_format", "{:.4f}".format):
         print(summary[cols].sort_values(["horizon", "ticker"]).to_string(index=False))
-        pooled = seeds[seeds["ticker"] == "POOLED"][["horizon", "seed", "r2_oos", "parsimony", "length", "program"]]
+        pooled = seeds[seeds["ticker"] == "POOLED"][["horizon", "seed", "r2_oos", "parsimony", "length", "formula"]]
         print("\nPooled formulas by seed:")
         print(pooled.to_string(index=False))
 
