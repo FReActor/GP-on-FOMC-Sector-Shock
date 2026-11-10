@@ -16,8 +16,11 @@ src/fetch_data.py      download prices (yfinance) and macro series (FRED)
 src/build_events.py    one row per shock event
 src/build_returns.py   asset returns around each event (target)
 src/build_features.py  inputs known before each event
+src/data_report.py     data sanity report -> results/
 src/models/            models (linear baseline, GP, ...)
 notebooks/         exploration
+results/           reports, tables, figures
+tests/             pytest (runs on every PR via .github/workflows/tests.yml)
 docs/lit_review/   literature review
 ```
 
@@ -38,7 +41,11 @@ python -m src.fetch_data
 python -m src.build_events
 python -m src.build_returns
 python -m src.build_features
+python -m src.data_report      # results/data_report.md + histogram
+pytest                         # tests; real-data tests skip until the steps above have run
 ```
+
+Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
 
 ## Working together
 
