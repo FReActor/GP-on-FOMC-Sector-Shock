@@ -1,0 +1,201 @@
+version,ticker,horizon,seed,parsimony,length,formula
+v0,POOLED,1d,0,0.001,1,-0.05800
+v0,POOLED,1d,1,0.0005,1,-0.06200
+v0,POOLED,1d,2,0.0005,1,-0.01800
+v0,POOLED,1d,3,0.0005,1,-0.04800
+v0,POOLED,1d,4,0.0005,2,-0.006000
+v0,POOLED,1d,5,0.0005,2,-0.01500
+v0,POOLED,1d,6,0.0005,1,-0.03300
+v0,POOLED,1d,7,0.001,1,-0.06000
+v0,POOLED,1d,8,0.0005,1,-0.005000
+v0,POOLED,1d,9,0.0005,1,-0.004000
+v0,XLB,1d,0,0.01,1,0.07200
+v0,XLB,1d,1,0.01,1,0.1010
+v0,XLB,1d,2,0.01,1,0.07400
+v0,XLB,1d,3,0.0005,16,"1.0/(Min(surprise_bp, -surprise_bp**2) - 0.535)"
+v0,XLB,1d,4,0.001,20,-1/Abs(surprise_bp**3*Abs(surprise_bp))
+v0,XLB,1d,5,0.005,5,-0.071/surprise_bp
+v0,XLB,1d,6,0.005,1,0.1050
+v0,XLB,1d,7,0.0005,38,"Min(-0.093/(surprise_bp**2*Abs(surprise_bp)), Abs(Min(0.093/surprise_bp, Min(0.091, -0.39/surprise_bp**2)/surprise_bp**3)/surprise_bp)/surprise_bp)"
+v0,XLB,1d,8,0.005,1,0.1100
+v0,XLB,1d,9,0.001,29,"-Max(-0.195, 0.596/surprise_bp)/surprise_bp**8"
+v0,XLE,1d,0,0.01,1,-0.07000
+v0,XLE,1d,1,0.0005,6,0.1197/surprise_bp
+v0,XLE,1d,2,0.005,1,0.02600
+v0,XLE,1d,3,0.001,8,-0.155/surprise_bp**3
+v0,XLE,1d,4,0.0005,23,"Min(0.000333/surprise_bp**3, 0.031/surprise_bp)/surprise_bp"
+v0,XLE,1d,5,0.0005,18,-0.132/Abs(surprise_bp**2*Abs(surprise_bp**3))
+v0,XLE,1d,6,0.001,14,"Min(-0.106/surprise_bp**2, Min(0.106, 0.106/surprise_bp)/surprise_bp)"
+v0,XLE,1d,7,0.0005,15,1.001e-5/surprise_bp**2
+v0,XLE,1d,8,0.001,15,"Min(0.022/surprise_bp**2, 0.0121/surprise_bp)"
+v0,XLE,1d,9,0.005,1,-0.1180
+v0,XLF,1d,0,0.005,1,0.07200
+v0,XLF,1d,1,0.001,2,0.09400
+v0,XLF,1d,2,0.005,1,0.09700
+v0,XLF,1d,3,0.0005,5,0.07800
+v0,XLF,1d,4,0.001,7,0.1000
+v0,XLF,1d,5,0.0005,2,0.07100
+v0,XLF,1d,6,0.01,1,0.06500
+v0,XLF,1d,7,0.01,1,-0.1260
+v0,XLF,1d,8,0.0005,3,0.1430
+v0,XLF,1d,9,0.0005,8,0
+v0,XLI,1d,0,0.01,1,-0.05200
+v0,XLI,1d,1,0.0005,1,-0.06100
+v0,XLI,1d,2,0.001,1,-0.01800
+v0,XLI,1d,3,0.0005,5,-0.04700
+v0,XLI,1d,4,0.0005,2,-0.006000
+v0,XLI,1d,5,0.0005,3,0
+v0,XLI,1d,6,0.0005,1,-0.07300
+v0,XLI,1d,7,0.001,1,-0.003000
+v0,XLI,1d,8,0.0005,4,-0.0001960
+v0,XLI,1d,9,0.0005,1,-0.004000
+v0,XLK,1d,0,0.0005,3,0.1260
+v0,XLK,1d,1,0.001,2,0.1530
+v0,XLK,1d,2,0.001,3,0.1280
+v0,XLK,1d,3,0.01,1,0.1760
+v0,XLK,1d,4,0.0005,1,0.1190
+v0,XLK,1d,5,0.0005,3,0.1372
+v0,XLK,1d,6,0.0005,1,0.2260
+v0,XLK,1d,7,0.0005,3,0.1440
+v0,XLK,1d,8,0.005,1,0.1810
+v0,XLK,1d,9,0.001,4,-0.01627
+v0,XLP,1d,0,0.001,12,-0.3430
+v0,XLP,1d,1,0.001,1,-0.2260
+v0,XLP,1d,2,0.01,1,-0.3150
+v0,XLP,1d,3,0.0005,5,-0.2739
+v0,XLP,1d,4,0.001,1,-0.3270
+v0,XLP,1d,5,0.01,1,-0.3940
+v0,XLP,1d,6,0.01,1,-0.3140
+v0,XLP,1d,7,0.005,1,-0.2880
+v0,XLP,1d,8,0.005,1,-0.2610
+v0,XLP,1d,9,0.0005,3,-0.3370
+v0,XLU,1d,0,0.001,2,-0.3880
+v0,XLU,1d,1,0.005,1,-0.2630
+v0,XLU,1d,2,0.005,1,-0.3070
+v0,XLU,1d,3,0.0005,2,-0.4580
+v0,XLU,1d,4,0.01,1,-0.3460
+v0,XLU,1d,5,0.0005,22,"Min(0.081*surprise_bp, -0.894/Abs(surprise_bp))"
+v0,XLU,1d,6,0.001,1,-0.3430
+v0,XLU,1d,7,0.0005,1,-0.3640
+v0,XLU,1d,8,0.01,1,-0.2730
+v0,XLU,1d,9,0.005,1,-0.3370
+v0,XLV,1d,0,0.0005,3,0.018*surprise_bp
+v0,XLV,1d,1,0.0005,5,0.01757*surprise_bp
+v0,XLV,1d,2,0.005,3,0.026*surprise_bp
+v0,XLV,1d,3,0.001,3,0.015*surprise_bp
+v0,XLV,1d,4,0.0005,6,"0.042*Min(0.042, surprise_bp)"
+v0,XLV,1d,5,0.0005,3,0.015*surprise_bp
+v0,XLV,1d,6,0.001,3,0.027*surprise_bp
+v0,XLV,1d,7,0.001,3,0.013*surprise_bp
+v0,XLV,1d,8,0.001,4,0.322/surprise_bp
+v0,XLV,1d,9,0.001,6,0.112/surprise_bp
+v0,XLY,1d,0,0.001,1,0.03700
+v0,XLY,1d,1,0.001,1,0.02300
+v0,XLY,1d,2,0.0005,2,0.08900
+v0,XLY,1d,3,0.01,1,0.07800
+v0,XLY,1d,4,0.0005,2,0.04200
+v0,XLY,1d,5,0.0005,3,0.01500
+v0,XLY,1d,6,0.001,2,0.05000
+v0,XLY,1d,7,0.001,1,0.07500
+v0,XLY,1d,8,0.0005,2,0.05500
+v0,XLY,1d,9,0.001,2,0.03400
+v0,POOLED,5d,0,0.005,1,-0.01700
+v0,POOLED,5d,1,0.01,1,-0.08300
+v0,POOLED,5d,2,0.005,1,-0.1220
+v0,POOLED,5d,3,0.0005,1,-0.04700
+v0,POOLED,5d,4,0.01,1,-0.09600
+v0,POOLED,5d,5,0.0005,1,-0.1210
+v0,POOLED,5d,6,0.0005,1,-0.09600
+v0,POOLED,5d,7,0.001,1,-0.1260
+v0,POOLED,5d,8,0.01,1,-0.1100
+v0,POOLED,5d,9,0.0005,1,-0.1120
+v0,XLB,5d,0,0.01,1,0.07200
+v0,XLB,5d,1,0.01,1,-0.02400
+v0,XLB,5d,2,0.005,1,0.02700
+v0,XLB,5d,3,0.005,5,1.0/surprise_bp
+v0,XLB,5d,4,0.01,1,-0.004000
+v0,XLB,5d,5,0.005,3,0.763/surprise_bp
+v0,XLB,5d,6,0.01,1,0.04700
+v0,XLB,5d,7,0.01,1,-0.01600
+v0,XLB,5d,8,0.0005,20,"Min(0.959, 1.197/(surprise_bp - 0.588))"
+v0,XLB,5d,9,0.005,1,-0.002000
+v0,XLE,5d,0,0.005,3,-0.077*surprise_bp
+v0,XLE,5d,1,0.005,1,-0.07300
+v0,XLE,5d,2,0.01,3,-0.061*surprise_bp
+v0,XLE,5d,3,0.005,3,-0.056*surprise_bp
+v0,XLE,5d,4,0.005,3,-0.071*surprise_bp
+v0,XLE,5d,5,0.005,1,-0.02400
+v0,XLE,5d,6,0.005,3,-0.081*surprise_bp
+v0,XLE,5d,7,0.01,1,-0.1260
+v0,XLE,5d,8,0.005,3,-0.065*surprise_bp
+v0,XLE,5d,9,0.005,3,-0.073*surprise_bp
+v0,XLF,5d,0,0.001,3,-0.3160
+v0,XLF,5d,1,0.0005,4,-0.3460
+v0,XLF,5d,2,0.001,1,-0.4390
+v0,XLF,5d,3,0.001,3,-0.3560
+v0,XLF,5d,4,0.005,1,-0.4370
+v0,XLF,5d,5,0.001,2,-0.4110
+v0,XLF,5d,6,0.0005,20,-0.3930
+v0,XLF,5d,7,0.001,1,-0.3640
+v0,XLF,5d,8,0.0005,3,-0.3840
+v0,XLF,5d,9,0.001,1,-0.2860
+v0,XLI,5d,0,0.001,2,0.01300
+v0,XLI,5d,1,0.0005,1,-0.09100
+v0,XLI,5d,2,0.0005,19,"-Min(-0.04383, 0.944/surprise_bp)"
+v0,XLI,5d,3,0.001,1,-0.03700
+v0,XLI,5d,4,0.001,1,-0.004000
+v0,XLI,5d,5,0.01,1,-0.04300
+v0,XLI,5d,6,0.0005,3,0.02700
+v0,XLI,5d,7,0.001,1,0.01300
+v0,XLI,5d,8,0.005,1,-0.1020
+v0,XLI,5d,9,0.0005,7,-0.0007105
+v0,XLK,5d,0,0.01,1,0.1420
+v0,XLK,5d,1,0.01,1,0.1200
+v0,XLK,5d,2,0.005,1,0.1960
+v0,XLK,5d,3,0.005,1,0.2010
+v0,XLK,5d,4,0.005,1,0.2280
+v0,XLK,5d,5,0.005,3,-0.918/surprise_bp
+v0,XLK,5d,6,0.01,1,0.1800
+v0,XLK,5d,7,0.01,1,0.2030
+v0,XLK,5d,8,0.01,1,0.1810
+v0,XLK,5d,9,0.01,1,0.2520
+v0,XLP,5d,0,0.001,3,-0.3150
+v0,XLP,5d,1,0.001,1,-0.2580
+v0,XLP,5d,2,0.0005,5,-0.3390
+v0,XLP,5d,3,0.01,1,-0.3560
+v0,XLP,5d,4,0.0005,9,-0.3470
+v0,XLP,5d,5,0.0005,1,-0.2560
+v0,XLP,5d,6,0.005,1,-0.3140
+v0,XLP,5d,7,0.005,1,-0.3640
+v0,XLP,5d,8,0.001,1,-0.3560
+v0,XLP,5d,9,0.01,1,-0.3370
+v0,XLU,5d,0,0.0005,3,0.003364
+v0,XLU,5d,1,0.0005,108,"0.2145*Min(0.2145*Min(-0.024*surprise_bp, -0.024*surprise_bp*Min(-0.009071, -0.04533*surprise_bp*Min(-0.226, surprise_bp)))*Min((surprise_bp + 0.949)*Min(-0.024*surprise_bp, 1.0e-6 - 0.000949*Min(-0.024, -0.024*surprise_bp)), 0.226*Min(-0.226, surprise_bp)), 0.226*Min(-0.226, surprise_bp))"
+v0,XLU,5d,2,0.005,1,-0.1280
+v0,XLU,5d,3,0.0005,16,-8.775e-10*surprise_bp**2
+v0,XLU,5d,4,0.0005,3,-0.1220
+v0,XLU,5d,5,0.001,3,-0.03100
+v0,XLU,5d,6,0.001,3,-0.1400
+v0,XLU,5d,7,0.001,2,-0.1680
+v0,XLU,5d,8,0.0005,11,"0.048*Min(0.048*surprise_bp, -0.048*Abs(surprise_bp))"
+v0,XLU,5d,9,0.005,1,-0.1430
+v0,XLV,5d,0,0.005,1,-0.2310
+v0,XLV,5d,1,0.0005,59,"Min(0.007687*Abs(Min(0.088352, surprise_bp))*Min(0.379, surprise_bp), 0.001164*Min(-0.971, surprise_bp))"
+v0,XLV,5d,2,0.005,1,-0.1280
+v0,XLV,5d,3,0.005,1,-0.1650
+v0,XLV,5d,4,0.0005,45,"0.001*(surprise_bp + Abs(0.001*Min(0.564, surprise_bp) + 0.001*Min(surprise_bp, -Min(-0.441, surprise_bp)) - 0.000441) + Min(0.441, surprise_bp) + Min(0.564, surprise_bp))*Abs(Min(-0.441, surprise_bp) + Min(0.564, surprise_bp))"
+v0,XLV,5d,5,0.0005,35,"Min(0.081*surprise_bp, 0.006561*surprise_bp**2, -Min(0, 0.081*surprise_bp)*Min(-0.187, -0.081*surprise_bp, 0.081*surprise_bp))"
+v0,XLV,5d,6,0.001,21,"Min(Min(0.099, surprise_bp)*Min(surprise_bp, 0.099*Min(0.994, surprise_bp)), 0.099*Min(-0.994, surprise_bp))"
+v0,XLV,5d,7,0.0005,37,"-0.007266*Abs(surprise_bp*Max(-surprise_bp, -0.302*Max(0.347211, surprise_bp)))"
+v0,XLV,5d,8,0.0005,58,"Min(0.006*surprise_bp*Abs(surprise_bp), -0.007663*Abs(surprise_bp))"
+v0,XLV,5d,9,0.0005,60,"0.00714*Abs(Min(surprise_bp, 0.014723335368*Min(surprise_bp, 4.92995462545382e-5*Abs(Min(0.107226, surprise_bp)))))*Min(0.151, surprise_bp)"
+v0,XLY,5d,0,0.0005,31,0.003046 + 0.4649/surprise_bp
+v0,XLY,5d,1,0.005,3,0.727/surprise_bp
+v0,XLY,5d,2,0.001,4,0.777/surprise_bp
+v0,XLY,5d,3,0.01,1,-0.04700
+v0,XLY,5d,4,0.0005,11,"Min(0.721/surprise_bp, 0.721/Abs(surprise_bp))"
+v0,XLY,5d,5,0.0005,33,"oo/(surprise_bp*Abs(surprise_bp*Abs(surprise_bp - Min(0, surprise_bp))))"
+v0,XLY,5d,6,0.01,1,-0.05000
+v0,XLY,5d,7,0.0005,36,"(-0.354*surprise_bp**2*Max(0.02057, surprise_bp*(0.02505 - 0.09416*Min(0.266, 0.1487*Abs(surprise_bp)))) + 0.7514)/surprise_bp"
+v0,XLY,5d,8,0.0005,30,"Min(0.717/surprise_bp, 0.728/surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(-0.431/surprise_bp, surprise_bp)))))"
+v0,XLY,5d,9,0.005,3,0.978/surprise_bp

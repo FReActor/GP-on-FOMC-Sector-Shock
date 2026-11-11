@@ -17,6 +17,8 @@ src/build_events.py    one row per shock event
 src/build_returns.py   asset returns around each event (target)
 src/build_features.py  inputs known before each event
 src/data_report.py     data sanity report -> results/
+src/config.py          shared paths, split (A/B), tickers, seeds: import from here
+src/data.py            load_panel() and the shared metrics (r2_oos, rmse, hit_rate)
 src/models/            models (linear baseline, GP, ...)
 notebooks/         exploration
 results/           reports, tables, figures
@@ -43,6 +45,9 @@ python -m src.build_returns
 python -m src.build_features
 python -m src.data_report      # results/data_report.md + histogram
 pytest                         # tests; real-data tests skip until the steps above have run
+python -m src.models.gp --version v0   # ~25 min on 8 cores; resumes if interrupted
+python -m src.models.linear    # linear baseline -> results/linear.csv
+python -m src.compare          # all models + zero/train_mean -> results/summary.csv
 ```
 
 Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
