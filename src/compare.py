@@ -56,7 +56,7 @@ def reference_rows() -> pd.DataFrame:
 
 
 def go_no_go(summary: pd.DataFrame) -> str | None:
-    """Pre-stated rule (docs/STAGE1_PLAN.md, week 7), on pooled excess_1d."""
+    """Pre-stated rule (Sun 11-15 freeze, see docs/STAGE1_PLAN.md), on pooled excess_1d."""
     seeds_path = config.RESULTS / "gp_v1_seeds.csv"
     have = set(summary["model"])
     missing = [m for m in ("gp_v1", "linear", "linear_interact") if m not in have]
