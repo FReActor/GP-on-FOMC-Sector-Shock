@@ -46,6 +46,7 @@ python -m src.build_features
 python -m src.data_report      # results/data_report.md + histogram
 pytest                         # tests; real-data tests skip until the steps above have run
 python -m src.models.gp --version v0   # ~25 min on 8 cores; resumes if interrupted
+python -m src.models.gp --version v1 --scope pooled   # or --scope ticker, to split v1 across two machines
 python -m src.models.linear    # linear baseline -> results/linear.csv
 python -m src.compare          # all models + zero/train_mean -> results/summary.csv
 ```

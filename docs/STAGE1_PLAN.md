@@ -18,7 +18,7 @@
 
 **Track C rules:**
 - Abhi's `build_features.py` was merged into main via PR #3. `features.csv` is not in git: each person generates it locally with `python src/build_features.py`, and both use the same `config.py`.
-- GP v1 runs on two machines, **starting Thu night**: Charles runs pooled (all tickers together); Abhi runs per-ticker (one model per ticker). Same seeds and generation settings, written in config, sized to finish overnight.
+- GP v1 runs on two machines, **starting Thu night**: Charles runs pooled (all tickers together): `python -m src.models.gp --version v1 --scope pooled`; Abhi runs per-ticker (one model per ticker): `python -m src.models.gp --version v1 --scope ticker`. `compare.py` combines the two into `gp_v1`. Same seeds and generation settings, written in config, sized to finish overnight.
 - Results go into `results/` **by Sat 11-14 noon**. If Abhi's per-ticker run isn't finished, we skip it; pooled is enough for the main conclusion.
 - If neither side has usable results by Saturday: cut C, present only A + B, and move "adding pre-event features" to Future work.
 
@@ -79,9 +79,9 @@ def load_panel(with_features: bool = True) -> pd.DataFrame:
 | Date | Charles (critical path) | Abhi (Person 3) | Snata (Person 2) |
 |---|---|---|---|
 | **Wed 11-11** | Merge `charles` into main; write `src/models/linear.py` → `results/linear.csv`; run `compare.py`; message the team | `features-data-report` is already merged into main (PR #3), no new PR needed | Read the lit review, start the Motivation slide |
-| **Thu 11-12** | Generate features.csv locally, write linear_interact; put the v1 settings in config; **start pooled GP v1 Thu night** | Pull the latest main; first rebuild the data locally (`fetch_data` → `build_events` → `build_returns` → `build_features`), since `data/` is not in git; do a small test run of `gp.py` on your machine; **start per-ticker GP v1 Thu night** | Motivation + literature, 2 slides (draft) |
-| **Fri 11-13** | Check pooled v1; start the plotting script `src/plots.py` | Check per-ticker v1; start going through the v1 formulas: which features GP uses most | Keep going |
-| **Sat 11-14** | **v1 results in `results/` by noon**, run `compare.py`; (if C is cut) robustness checks, e.g. dropping the 2008 / 2020 events | **Per-ticker results in `results/` by noon**; write the feature-usage frequency table | — |
+| **Thu 11-12** | Generate features.csv locally, write linear_interact; put the v1 settings in config; **start pooled GP v1 Thu night** (`python -m src.models.gp --version v1 --scope pooled`) | Pull the latest main; first rebuild the data locally (`fetch_data` → `build_events` → `build_returns` → `build_features`), since `data/` is not in git; do a small test run of `gp.py` on your machine; **start per-ticker GP v1 Thu night** (`python -m src.models.gp --version v1 --scope ticker`) | Motivation + literature, 2 slides (draft) |
+| **Fri 11-13** | Check pooled v1; start the plotting script `src/plots.py` | Check per-ticker v1; start going through the v1 formulas: which features GP uses most; open a PR adding the robustness flags from `docs/robustness_flags.md` (`TARGET`, `SCHEDULED_ONLY`, `DROP_EVENTS` + the `load_panel` filter) to `src/config.py` and `src/data.py`; Charles reviews | Keep going |
+| **Sat 11-14** | **v1 results in `results/` by noon**, run `compare.py`; (if C is cut) robustness checks using Abhi's flags in `config.py` (e.g. `SCHEDULED_ONLY`, `DROP_EVENTS` for 2008 / 2020 events, `TARGET`) | **Per-ticker results in `results/` by noon**; write the feature-usage frequency table | — |
 | **Sun 11-15** | **Freeze results + set the storyline** (the old go/no-go). Create the shared Google Slides with slide placeholders; send `results/` and the figures to the team | Start the GP v1 slides | Start the Baseline slide once linear.csv arrives |
 | **Mon 11-16** | Write the Results slides (GP vs linear vs zero, formula slide) | GP v1 slides + Data & Method slides | Baseline slide |
 | **Tue 11-17** | Finish Results slides; write Conclusion / Future work | **Data & Method slides due** | **Motivation + literature slides due** |
@@ -98,9 +98,10 @@ def load_panel(with_features: bool = True) -> pd.DataFrame:
 
 **Abhi (Person 3, joining GP)**
 1. `build_features.py` merged into main (PR #3): done.
-2. Run **per-ticker GP v1** on your own machine (same `gp.py` and config, only the pooled/per-ticker switch changes), output to `results/gp_v1_per_ticker.csv`. First rebuild the data locally (`fetch_data` → `build_events` → `build_returns` → `build_features`), since `data/` is not in git. Start Thu night, **due Sat 11-14 noon**. Non-blocking: if it doesn't finish, we use Charles's pooled results only.
-3. Interpret v1: which features GP uses most, 2–3 example formulas, and whether it beats surprise-only. **Due Sun 11-15.**
-4. Slides: Data & Method, 1–2 slides (due Tue 11-17); GP v1 results, 1–2 slides (due Wed 11-18).
+2. Run **per-ticker GP v1** on your own machine with `python -m src.models.gp --version v1 --scope ticker` (same `gp.py` and config; Charles runs `--scope pooled`). It writes `results/gp_v1_per_ticker.csv` and `results/gp_v1_per_ticker_seeds.csv`. First rebuild the data locally (`fetch_data` → `build_events` → `build_returns` → `build_features`), since `data/` is not in git. Start Thu night, **due Sat 11-14 noon**. Non-blocking: if it doesn't finish, we use Charles's pooled results only.
+3. Fri 11-13: open a PR adding the robustness flags from `docs/robustness_flags.md` (`TARGET`, `SCHEDULED_ONLY`, `DROP_EVENTS` + the `load_panel` filter) to `src/config.py` and `src/data.py`; Charles reviews. **Due Fri 11-13.**
+4. Interpret v1: which features GP uses most, 2–3 example formulas, and whether it beats surprise-only. **Due Sun 11-15.**
+5. Slides: Data & Method, 1–2 slides (due Tue 11-17); GP v1 results, 1–2 slides (due Wed 11-18).
 
 **Snata (Person 2)**
 1. Motivation + literature, 2 slides (what the question is, why GP, Chen & Yeh 2000, Stasinakis 2013, Neely 1997 positive / Allen & Karjalainen 1999 negative). Material: the lit review doc. **Due Tue 11-17.**

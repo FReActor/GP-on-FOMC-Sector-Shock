@@ -34,6 +34,15 @@ def model_files() -> dict[str, pd.DataFrame]:
         df = pd.read_csv(path)
         if REQUIRED <= set(df.columns) and "seed" not in df.columns:
             out[path.stem] = df
+    # gp.py --scope pooled / --scope ticker write the two halves of one GP run separately
+    # (gp_v1_pooled.csv + gp_v1_per_ticker.csv); report them together under gp_v1.
+    for suffix in ("_pooled", "_per_ticker"):
+        for name in [n for n in list(out) if n.endswith(suffix)]:
+            base = name[: -len(suffix)]
+            if base in out and not (config.RESULTS / f"{base}.csv").exists():
+                out[base] = pd.concat([out[base], out.pop(name)], ignore_index=True)
+            elif base not in out:
+                out[base] = out.pop(name)
     return out
 
 
@@ -58,6 +67,8 @@ def reference_rows() -> pd.DataFrame:
 def go_no_go(summary: pd.DataFrame) -> str | None:
     """Pre-stated rule (Sun 11-15 freeze, see docs/STAGE1_PLAN.md), on pooled excess_1d."""
     seeds_path = config.RESULTS / "gp_v1_seeds.csv"
+    if not seeds_path.exists():
+        seeds_path = config.RESULTS / "gp_v1_pooled_seeds.csv"
     have = set(summary["model"])
     missing = [m for m in ("gp_v1", "linear", "linear_interact") if m not in have]
     if missing or not seeds_path.exists():

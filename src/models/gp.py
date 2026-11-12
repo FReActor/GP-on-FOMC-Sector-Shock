@@ -20,8 +20,17 @@ Outputs (version v0 shown):
     results/preds/gp_v0.csv        pooled model predictions: event_date, ticker, horizon, split, seed, y, yhat
     results/preds/gp_v0_ticker.csv same, from the per-ticker models
 
+--scope splits one run across machines (same seeds and settings either way):
+    all     POOLED + every ticker (default), file names as above
+    pooled  POOLED only        -> results/gp_v1_pooled.csv, gp_v1_pooled_seeds.csv, preds/gp_v1_pooled.csv
+    ticker  per-ticker only    -> results/gp_v1_per_ticker.csv, gp_v1_per_ticker_seeds.csv, preds/gp_v1_per_ticker.csv
+src/compare.py combines gp_v1_pooled + gp_v1_per_ticker into model gp_v1 when gp_v1.csv is absent.
+gp_formulas.csv is shared: a run replaces only the rows of its own version and tickers.
+
 Run from the repo root:
     python -m src.models.gp --version v0
+    python -m src.models.gp --version v1 --scope pooled   # Charles
+    python -m src.models.gp --version v1 --scope ticker   # Abhi
 """
 
 import argparse
@@ -137,7 +146,8 @@ def save_formulas(seeds: pd.DataFrame, version: str) -> None:
     new = seeds.assign(version=version)[["version", "ticker", "horizon", "seed", "parsimony", "length", "formula"]]
     if path.exists():
         old = pd.read_csv(path)
-        new = pd.concat([old[old["version"] != version], new], ignore_index=True)
+        replaced = (old["version"] == version) & old["ticker"].isin(new["ticker"].unique())
+        new = pd.concat([old[~replaced], new], ignore_index=True)
     new.to_csv(path, index=False)
 
 
@@ -157,14 +167,19 @@ def _task(panel, version, scope, horizon, seed):
     return res
 
 
-def run(version: str, jobs: int, fresh: bool = False) -> None:
+SCOPE_SUFFIX = {"all": "", "pooled": "_pooled", "ticker": "_per_ticker"}
+
+
+def run(version: str, jobs: int, fresh: bool = False, scope: str = "all") -> None:
     panel = load_panel(with_features=(version != "v0"))
-    scopes = ["POOLED"] + list(config.TICKERS)
+    scopes = {"all": ["POOLED"] + list(config.TICKERS), "pooled": ["POOLED"],
+              "ticker": list(config.TICKERS)}[scope]
+    name = f"gp_{version}{SCOPE_SUFFIX[scope]}"
     tasks = [(s, h, seed) for h in config.HORIZONS for s in scopes for seed in config.SEEDS]
     if fresh:
         for s, h, seed in tasks:
             _cache_path(version, s, h, seed).unlink(missing_ok=True)
-    print(f"GP {version}: split {config.SPLIT}, {len(tasks)} runs x {len(PARSIMONY_GRID) + 1} fits, jobs={jobs}")
+    print(f"GP {version} (scope {scope}): split {config.SPLIT}, {len(tasks)} runs x {len(PARSIMONY_GRID) + 1} fits, jobs={jobs}")
     # stdlib process pool (joblib/loky fails when the temp path has non-ASCII characters).
     # If a worker dies (sleep, memory), restart the pool; finished runs come from the cache.
     for attempt in range(3):
@@ -185,8 +200,8 @@ def run(version: str, jobs: int, fresh: bool = False) -> None:
     seeds = pd.DataFrame([row for _, _, row in out])
     cols_in = inputs_for(version)
     seeds["formula"] = [to_formula(p, cols_in, n) for p, n in zip(seeds["program"], seeds["length"])]
-    pooled_preds = pd.concat([p for s, p, _ in out if s == "POOLED"], ignore_index=True)
-    ticker_preds = pd.concat([p for s, p, _ in out if s != "POOLED"], ignore_index=True)
+    pooled_preds = [p for s, p, _ in out if s == "POOLED"]
+    ticker_preds = [p for s, p, _ in out if s != "POOLED"]
 
     g = seeds.groupby(["ticker", "horizon"], sort=False)
     summary = g[["r2_oos", "rmse_oos", "hit_rate", "length"]].median().rename(columns={"length": "complexity"})
@@ -198,18 +213,22 @@ def run(version: str, jobs: int, fresh: bool = False) -> None:
     summary = summary.reset_index()
 
     (config.RESULTS / "preds").mkdir(parents=True, exist_ok=True)
-    summary.to_csv(config.RESULTS / f"gp_{version}.csv", index=False)
-    seeds.to_csv(config.RESULTS / f"gp_{version}_seeds.csv", index=False)
-    pooled_preds.to_csv(config.RESULTS / "preds" / f"gp_{version}.csv", index=False)
-    ticker_preds.to_csv(config.RESULTS / "preds" / f"gp_{version}_ticker.csv", index=False)
+    summary.to_csv(config.RESULTS / f"{name}.csv", index=False)
+    seeds.to_csv(config.RESULTS / f"{name}_seeds.csv", index=False)
+    if pooled_preds:
+        pd.concat(pooled_preds, ignore_index=True).to_csv(config.RESULTS / "preds" / f"{name}.csv", index=False)
+    if ticker_preds:
+        tname = name if scope == "ticker" else f"{name}_ticker"
+        pd.concat(ticker_preds, ignore_index=True).to_csv(config.RESULTS / "preds" / f"{tname}.csv", index=False)
     save_formulas(seeds, version)
 
     cols = ["ticker", "horizon", "r2_oos", "r2_oos_min", "r2_oos_max", "rmse_oos", "hit_rate", "complexity", "parsimony_mode"]
     with pd.option_context("display.width", 200, "display.float_format", "{:.4f}".format):
         print(summary[cols].sort_values(["horizon", "ticker"]).to_string(index=False))
         pooled = seeds[seeds["ticker"] == "POOLED"][["horizon", "seed", "r2_oos", "parsimony", "length", "formula"]]
-        print("\nPooled formulas by seed:")
-        print(pooled.to_string(index=False))
+        if len(pooled):
+            print("\nPooled formulas by seed:")
+            print(pooled.to_string(index=False))
 
 
 def main() -> None:
@@ -218,8 +237,10 @@ def main() -> None:
     ap.add_argument("--jobs", type=int, default=max(1, min(8, (os.cpu_count() or 2) - 1)),
                     help="parallel runs (default: up to 8)")
     ap.add_argument("--fresh", action="store_true", help="ignore cached runs in data/processed/gp_cache")
+    ap.add_argument("--scope", choices=list(SCOPE_SUFFIX), default="all",
+                    help="all = POOLED + every ticker; pooled / ticker split the run across machines")
     args = ap.parse_args()
-    run(args.version, args.jobs, args.fresh)
+    run(args.version, args.jobs, args.fresh, args.scope)
 
 
 if __name__ == "__main__":
