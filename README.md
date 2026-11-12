@@ -61,6 +61,19 @@ python -m src.models.gp --version v1 --scope tickers           # machine 2 -> re
 
 Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
 
+### Stage 2 (official Fed surprise, 12 Ken French industries, 1994-2026)
+
+Design and decisions: [docs/STAGE2.md](docs/STAGE2.md). The 2016+ test set is locked; nothing below reads it.
+
+```
+python -m src.v1.fetch                              # SF Fed USMPD + Bauer-Swanson, Ken French, FRED -> data/raw/v1/
+python -m src.v1.build                              # events, returns, features, panel -> data/processed/v1/, docs/DATA_CARD.md
+python -m src.v1.gate                               # Gate 2 sanity check -> results/v1/gate2.md
+python -m src.v1.run --models gp_pooled --quick     # ~20 s smoke test
+python -m src.v1.run                                # all models on the 4 dev folds -> results/v1/preds/
+python -m src.v1.report                             # -> results/v1/dev_report.md, dev_summary.csv
+```
+
 ## Working together
 
 Commit to a branch and open a pull request into `main`; ask a teammate to review.

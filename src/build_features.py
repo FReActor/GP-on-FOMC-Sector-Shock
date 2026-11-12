@@ -93,14 +93,16 @@ def day_minus_1(trading_days: pd.DatetimeIndex, trade_date: pd.Timestamp) -> int
     return int(i - 1) if i >= 1 else None
 
 
-def macro_asof(fred: pd.DataFrame, asof: pd.Timestamp) -> tuple[dict, pd.Timestamp | None]:
+def macro_asof(fred: pd.DataFrame, asof: pd.Timestamp,
+               macro: dict | None = None) -> tuple[dict, pd.Timestamp | None]:
     """Macro features from the latest FRED row dated <= asof (never a later one).
 
     Each series is read as of its own latest non-missing value, so a holiday in one series does
     not blank the others. Values older than MAX_STALE_DAYS are returned as NaN.
+    `macro` (output name -> builder) defaults to MACRO; Stage 2 passes its own.
     """
     out, used_dates = {}, []
-    for name, build in MACRO.items():
+    for name, build in (macro or MACRO).items():
         s = build(fred).dropna()
         s = s[s.index <= asof]
         if s.empty or (asof - s.index[-1]).days > MAX_STALE_DAYS:
