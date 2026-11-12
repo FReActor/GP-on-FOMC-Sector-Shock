@@ -20,3 +20,16 @@ TICKERS = ["XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY"] if SPL
 HORIZONS = ["1d", "5d"]
 SEEDS = list(range(10))
 FEATURES = ["surprise_bp", "vix", "slope_2s10s", "beta_1y", "mom_20d"]
+
+# ---- GP settings: shared so the pooled and per-ticker runs on different machines match ----
+# Changing any of these starts a fresh cache automatically (see src/models/gp.py).
+GP = dict(
+    population_size=1000,
+    generations=40,
+    tournament_size=20,
+    function_set=("add", "sub", "mul", "div", "max", "min", "abs", "neg"),
+    const_range=(-1.0, 1.0),
+    init_depth=(2, 4),
+    max_samples=0.9,
+)
+GP_PARSIMONY_GRID = [0.0005, 0.001, 0.005, 0.01]  # picked per run on the val years

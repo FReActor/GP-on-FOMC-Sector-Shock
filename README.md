@@ -48,6 +48,15 @@ pytest                         # tests; real-data tests skip until the steps abo
 python -m src.models.gp --version v0   # ~25 min on 8 cores; resumes if interrupted
 python -m src.models.linear    # linear baseline -> results/linear.csv
 python -m src.compare          # all models + zero/train_mean -> results/summary.csv
+python -m src.interpret        # which features GP uses, v1 vs v0 -> results/gp_interpretation.md
+```
+
+GP v1 can be split across two machines (same `config.GP` settings on both):
+
+```
+python -m src.models.gp --version v1 --scope tickers --quick   # ~30 s smoke test, writes to data/processed/gp_quick/
+python -m src.models.gp --version v1 --scope pooled            # machine 1 -> results/gp_v1*.csv
+python -m src.models.gp --version v1 --scope tickers           # machine 2 -> results/gp_v1_per_ticker*.csv
 ```
 
 Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
