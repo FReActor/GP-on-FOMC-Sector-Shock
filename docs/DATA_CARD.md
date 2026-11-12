@@ -75,32 +75,40 @@ Events per year (scheduled / unscheduled):
 | 2025 | 8 | 0 |
 | 2026 | 6 | 0 |
 
-## Panel
+## Panels
 
-- rows: 3,348 = 279 events x 12 industries
-- target `excess_1d` = industry minus CRSP value-weighted market, close day -1 to close day 0
+- `ff12`: 3,348 rows = 279 events x 12 industries
+- `ff49`: 13,671 rows = 279 events x 49 industries
+- targets: `ret_1d` = industry return, close day -1 to close day 0; `excess_1d` = the same minus the CRSP value-weighted market
+- tables below: main universe `ff49`
 
 Missing values per column:
 
 | column | missing |
 |---|---|
-| mps_bs_bp | 288 |
-| mps_orth_bs_bp | 288 |
-| hf_sp500_pct | 204 |
+| mps_bs_bp | 1176 |
+| mps_orth_bs_bp | 1176 |
+| hf_sp500_pct | 833 |
+| bm | 76 |
 
 Feature summary (dev years):
 
 | column | count | mean | std | min | max |
 |---|---|---|---|---|---|
-| mps_bp | 2244 | -0 | 6.5011 | -38.8513 | 16.0156 |
-| excess_1d | 2244 | -0.0005 | 0.0097 | -0.0951 | 0.107 |
-| vix | 2244 | 21.3884 | 8.903 | 10.71 | 66.96 |
-| slope_2s10s | 2244 | 1.2028 | 0.9212 | -0.49 | 2.78 |
-| term_10y3m | 2244 | 1.7104 | 1.1598 | -0.95 | 3.58 |
-| credit | 2244 | 2.4625 | 0.8254 | 1.27 | 6.1 |
-| ff | 2244 | 2.9265 | 2.3752 | 0.07 | 7.41 |
-| beta_mkt | 2244 | 0.9272 | 0.2842 | 0.0393 | 2.1378 |
-| beta_2y | 2244 | 0.0431 | 0.0662 | -0.1361 | 0.2705 |
-| mom_20d | 2244 | 0.0044 | 0.0586 | -0.3863 | 0.3487 |
-| vol_60d | 2244 | 0.012 | 0.0067 | 0.0036 | 0.0654 |
-| mkt_mom_20d | 2244 | 0.0042 | 0.0504 | -0.2071 | 0.1457 |
+| mps_bp | 9163 | 0 | 6.5 | -38.8513 | 16.0156 |
+| ret_1d | 9163 | 0.004 | 0.019 | -0.1922 | 0.2165 |
+| excess_1d | 9163 | -0.0002 | 0.0139 | -0.2053 | 0.1993 |
+| vix | 9163 | 21.3884 | 8.9015 | 10.71 | 66.96 |
+| slope_2s10s | 9163 | 1.2028 | 0.9211 | -0.49 | 2.78 |
+| term_10y3m | 9163 | 1.7104 | 1.1596 | -0.95 | 3.58 |
+| credit | 9163 | 2.4625 | 0.8253 | 1.27 | 6.1 |
+| ff | 9163 | 2.9265 | 2.3748 | 0.07 | 7.41 |
+| beta_mkt | 9163 | 0.9437 | 0.3589 | -0.9962 | 2.4967 |
+| beta_2y | 9163 | 0.0464 | 0.0698 | -0.2301 | 0.356 |
+| mom_20d | 9163 | 0.0038 | 0.073 | -0.5173 | 0.6327 |
+| vol_60d | 9163 | 0.0142 | 0.0081 | 0.0036 | 0.1043 |
+| mkt_mom_20d | 9163 | 0.0042 | 0.0504 | -0.2071 | 0.1457 |
+| bm | 9151 | -1.0436 | 0.4762 | -4.6052 | 0.6313 |
+| size | 9163 | 7.5702 | 1.0936 | 4.346 | 11.291 |
+| fomc_beta_raw | 9163 | -0.4729 | 0.3265 | -1.5995 | 0.6621 |
+| fomc_beta_exc | 9163 | 0.0557 | 0.3009 | -0.9411 | 1.3784 |

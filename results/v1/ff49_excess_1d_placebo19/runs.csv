@@ -1,0 +1,37 @@
+model,fold,seed,ticker,complexity,describe,config
+zero,1,0,POOLED,0,0,39f5543991
+zero,2,0,POOLED,0,0,39f5543991
+zero,3,0,POOLED,0,0,39f5543991
+zero,4,0,POOLED,0,0,39f5543991
+mean,1,0,POOLED,1,train mean,e4ca52126a
+mean,2,0,POOLED,1,train mean,e4ca52126a
+mean,3,0,POOLED,1,train mean,e4ca52126a
+mean,4,0,POOLED,1,train mean,e4ca52126a
+linear,1,0,POOLED,2,per-industry OLS,112aa3fb2d
+linear,2,0,POOLED,2,per-industry OLS,112aa3fb2d
+linear,3,0,POOLED,2,per-industry OLS,112aa3fb2d
+linear,4,0,POOLED,2,per-industry OLS,112aa3fb2d
+linear_pooled,1,0,POOLED,2,-0.0389 +0.0027*s,32114cb820
+linear_pooled,2,0,POOLED,2,-0.0250 +0.0003*s,32114cb820
+linear_pooled,3,0,POOLED,2,-0.0055 +0.0019*s,32114cb820
+linear_pooled,4,0,POOLED,2,-0.0030 +0.0004*s,32114cb820
+linear_beta,1,0,POOLED,4,-0.0370 +0.0020*s -0.0035*s*beta_mkt +0.0541*beta_mkt,429617fb26
+linear_beta,2,0,POOLED,4,-0.0246 +0.0002*s -0.0031*s*beta_mkt +0.0490*beta_mkt,429617fb26
+linear_beta,3,0,POOLED,4,-0.0054 +0.0012*s +0.0030*s*beta_mkt +0.1164*beta_mkt,429617fb26
+linear_beta,4,0,POOLED,4,-0.0028 -0.0001*s +0.0007*s*beta_mkt +0.1118*beta_mkt,429617fb26
+linear_fomc,1,0,POOLED,4,-0.0395 +0.0026*s -0.0050*s*fomc_beta -0.0399*fomc_beta,8c6332bb85
+linear_fomc,2,0,POOLED,4,-0.0259 +0.0003*s -0.0061*s*fomc_beta -0.0257*fomc_beta,8c6332bb85
+linear_fomc,3,0,POOLED,4,-0.0065 +0.0018*s -0.0099*s*fomc_beta -0.0679*fomc_beta,8c6332bb85
+linear_fomc,4,0,POOLED,4,-0.0038 +0.0003*s -0.0083*s*fomc_beta -0.0624*fomc_beta,8c6332bb85
+linear_interact_pooled,1,0,POOLED,25,-0.0815 -0.0029*s -0.0034*s*beta_mkt +0.0028*s*beta_2y -0.0083*s*fomc_beta +0.0032*s*bm +0.0068*s*size +0.0018*s*mom_20d -0.0114*s*vol_60d +0.0139*s*vix -0.0156*s*term_10y3m +0.0089*s*credit +0.0000*s*zlb +0.0203*s*hawk +0.0855*beta_mkt -0.0565*beta_2y -0.0329*fomc_beta +0.0255*bm -0.0090*size +0.0174*mom_20d -0.0467*vol_60d -0.0969*vix -0.0615*term_10y3m +0.2039*credit +0.0000*zlb,f616bc56be
+linear_interact_pooled,2,0,POOLED,25,-0.0739 -0.0051*s -0.0023*s*beta_mkt +0.0002*s*beta_2y -0.0089*s*fomc_beta +0.0030*s*bm +0.0067*s*size -0.0006*s*mom_20d -0.0094*s*vol_60d +0.0136*s*vix -0.0125*s*term_10y3m +0.0094*s*credit +0.0000*s*zlb +0.0215*s*hawk +0.0716*beta_mkt -0.0468*beta_2y -0.0184*fomc_beta +0.0125*bm -0.0133*size +0.0138*mom_20d -0.0396*vol_60d -0.0787*vix -0.0458*term_10y3m +0.1623*credit +0.0000*zlb,f616bc56be
+linear_interact_pooled,3,0,POOLED,25,-0.0616 -0.0019*s -0.0018*s*beta_mkt +0.0028*s*beta_2y -0.0096*s*fomc_beta +0.0038*s*bm +0.0012*s*size -0.0061*s*mom_20d +0.0075*s*vol_60d +0.0086*s*vix -0.0087*s*term_10y3m +0.0083*s*credit -0.0831*s*zlb +0.0224*s*hawk +0.0927*beta_mkt +0.0047*beta_2y -0.0187*fomc_beta +0.0298*bm -0.0520*size +0.0033*mom_20d +0.0670*vol_60d -0.1147*vix -0.0408*term_10y3m +0.1319*credit +0.1572*zlb,f616bc56be
+linear_interact_pooled,4,0,POOLED,25,-0.0289 -0.0036*s -0.0043*s*beta_mkt +0.0041*s*beta_2y -0.0095*s*fomc_beta +0.0017*s*bm +0.0021*s*size -0.0036*s*mom_20d +0.0040*s*vol_60d +0.0046*s*vix -0.0052*s*term_10y3m +0.0034*s*credit -0.0224*s*zlb +0.0182*s*hawk +0.0952*beta_mkt -0.0094*beta_2y -0.0152*fomc_beta +0.0273*bm -0.0348*size -0.0093*mom_20d +0.0553*vol_60d -0.0642*vix -0.0268*term_10y3m +0.1132*credit -0.0579*zlb,f616bc56be
+enet,1,0,POOLED,8,"alpha=0.1, l1=0.8",4c89a79cf4
+enet,2,0,POOLED,19,"alpha=0.03, l1=0.8",4c89a79cf4
+enet,3,0,POOLED,18,"alpha=0.03, l1=0.8",4c89a79cf4
+enet,4,0,POOLED,11,"alpha=0.1, l1=0.8",4c89a79cf4
+hgb,1,0,POOLED,100,"{'max_depth': 2, 'learning_rate': 0.03, 'max_iter': 100, 'min_samples_leaf': 50, 'l2_regularization': 1.0}",7744af0477
+hgb,2,0,POOLED,100,"{'max_depth': 2, 'learning_rate': 0.03, 'max_iter': 100, 'min_samples_leaf': 50, 'l2_regularization': 1.0}",7744af0477
+hgb,3,0,POOLED,300,"{'max_depth': 3, 'learning_rate': 0.03, 'max_iter': 300, 'min_samples_leaf': 50, 'l2_regularization': 1.0}",7744af0477
+hgb,4,0,POOLED,100,"{'max_depth': 2, 'learning_rate': 0.03, 'max_iter': 100, 'min_samples_leaf': 50, 'l2_regularization': 1.0}",7744af0477

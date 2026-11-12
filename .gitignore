@@ -224,3 +224,9 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+
+# Stage 2: per-row predictions are large and rebuilt by python -m src.v1.run; summaries are kept
+results/v1/**/preds/
+results/v1/quick/
+# PySR scratch runs
+outputs/

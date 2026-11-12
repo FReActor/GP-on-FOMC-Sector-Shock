@@ -4,6 +4,8 @@ Writes to data/raw/v1/ (not in git):
     USMPD.xlsx                               SF Fed US Monetary Policy Event-Study Database
     monetary-policy-surprises-data.xlsx      Bauer & Swanson (2023) surprises (official, to 2023)
     12_Industry_Portfolios_daily_CSV.zip     Ken French 12 industries, daily
+    49_Industry_Portfolios_daily_CSV.zip     Ken French 49 industries, daily
+    12/49_Industry_Portfolios_CSV.zip        monthly files: book-to-market (annual), firm size (monthly)
     F-F_Research_Data_Factors_daily_CSV.zip  Ken French factors (market = Mkt-RF + RF)
     fred.csv                                 DGS2, DGS10, DGS3MO, VIXCLS, BAA10Y, DFF from 1990
     manifest.json                            url, bytes, sha256, download time for every file
@@ -56,8 +58,10 @@ def fetch_fred(start: str = S.FRED_START) -> pd.DataFrame:
 
 # ---------------- parsers ----------------
 
-def read_french_block(text: str, title: str = "Average Value Weighted Returns -- Daily") -> pd.DataFrame:
-    """One block of a Ken French daily CSV -> decimals, DatetimeIndex. -99.99 / -999 -> NaN."""
+def read_french_block(text: str, title: str = "Average Value Weighted Returns -- Daily",
+                      scale: float = 100.0) -> pd.DataFrame:
+    """One block of a Ken French CSV -> DatetimeIndex, values / scale (returns: % -> decimals).
+    -99.99 / -999 -> NaN. Dates may be YYYYMMDD (daily), YYYYMM (monthly, -> month end) or YYYY."""
     lines = text.splitlines()
     start = next(i for i, ln in enumerate(lines) if ln.strip() == title)
     header = lines[start + 1]
@@ -67,9 +71,15 @@ def read_french_block(text: str, title: str = "Average Value Weighted Returns --
             break
         body.append(ln)
     df = pd.read_csv(io.StringIO("\n".join([header] + body)), index_col=0)
-    df.index = pd.to_datetime(df.index.astype(str), format="%Y%m%d")
+    idx = df.index.astype(str).str.strip()
+    if idx.str.len().max() == 8:
+        df.index = pd.to_datetime(idx, format="%Y%m%d")
+    elif idx.str.len().max() == 6:
+        df.index = pd.to_datetime(idx, format="%Y%m") + pd.offsets.MonthEnd(0)
+    else:
+        df.index = pd.to_datetime(idx, format="%Y")
     df.columns = [c.strip() for c in df.columns]
-    df = df.astype(float).replace([-99.99, -999.0], np.nan) / 100.0
+    df = df.astype(float).replace([-99.99, -999.0], np.nan) / scale
     return df.sort_index()
 
 
@@ -93,12 +103,24 @@ def _zip_text(path: Path) -> str:
         return z.read(z.namelist()[0]).decode("latin-1")
 
 
-def load_industry_returns(raw: Path = S.RAW) -> pd.DataFrame:
-    """Daily value-weighted returns of the 12 industries plus MKT (= Mkt-RF + RF), decimals."""
-    ind = read_french_block(_zip_text(raw / "12_Industry_Portfolios_daily_CSV.zip"))
+def load_industry_returns(raw: Path = S.RAW, universe: str = "ff12") -> pd.DataFrame:
+    """Daily value-weighted industry returns plus MKT (= Mkt-RF + RF), decimals."""
+    ind = read_french_block(_zip_text(raw / f"{S.UNIVERSES[universe]}_daily_CSV.zip"))
     ff = read_french_factors(_zip_text(raw / "F-F_Research_Data_Factors_daily_CSV.zip"))
     ind[S.BENCHMARK] = ff["Mkt-RF"] + ff["RF"]
-    return ind[S.INDUSTRIES + [S.BENCHMARK]].dropna(how="all")
+    cols = S.INDUSTRIES if universe == "ff12" else [c for c in ind.columns if c != S.BENCHMARK]
+    return ind[cols + [S.BENCHMARK]].dropna(how="all")
+
+
+def load_characteristics(raw: Path = S.RAW, universe: str = "ff12") -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(book-to-market by year, average firm size in $M by month end) for each industry.
+
+    Ken French's BE/ME row for year t uses book equity for fiscal year t-1 over market equity at
+    December t-1; he uses it from the end of June of year t. We do the same (see build.py)."""
+    text = _zip_text(raw / f"{S.UNIVERSES[universe]}_CSV.zip")
+    bm = read_french_block(text, "Sum of BE / Sum of ME", scale=1.0)
+    size = read_french_block(text, "Average Firm Size", scale=1.0)
+    return bm, size
 
 
 def load_usmpd(raw: Path = S.RAW, sheet: str = S.USMPD_SHEET) -> pd.DataFrame:
@@ -135,12 +157,15 @@ def main() -> None:
     print(f"fred.csv: {fred.shape}, {fred.index.min().date()} to {fred.index.max().date()}")
 
     # coverage, so the data card can state it (the web pages do not)
-    u, bs, ind = load_usmpd(), load_bauer_swanson(), load_industry_returns()
+    u, bs = load_usmpd(), load_bauer_swanson()
     manifest["_coverage"] = {
         "usmpd": [str(u["Date"].min().date()), str(u["Date"].max().date()), int(len(u))],
         "bauer_swanson": [str(bs["Date"].min().date()), str(bs["Date"].max().date()), int(len(bs))],
-        "french12": [str(ind.index.min().date()), str(ind.index.max().date()), int(len(ind))],
     }
+    for uni in S.UNIVERSES:
+        ind = load_industry_returns(universe=uni)
+        manifest["_coverage"][f"french_{uni}"] = [str(ind.index.min().date()), str(ind.index.max().date()),
+                                                  int(len(ind))]
     (S.RAW / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(json.dumps(manifest["_coverage"], indent=2))
 

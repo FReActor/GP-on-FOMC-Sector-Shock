@@ -79,8 +79,8 @@ def main() -> None:
            md(head), "",
            f"**Gate 2: {'PASS' if passed else 'FAIL'}** (rule: (a) and (b) negative with t < -2).", "",
            "## By industry (daily, close day -1 to close day 0)", "",
-           f"- raw return slope negative for {n_neg} of 12 industries",
-           f"- excess return (the prediction target) has |t| > 2 for {n_sig_exc} of 12 industries", "",
+           f"- raw return slope negative for {n_neg} of {len(ind)} industries",
+           f"- excess return has |t| > 2 for {n_sig_exc} of {len(ind)} industries", "",
            md(ind), "",
            "## How to read this", "",
            "- (a) vs (b): the market reacts strongly inside the 30-100 minute window; over the full day "

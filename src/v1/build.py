@@ -1,10 +1,14 @@
 """Build the Stage 2 panel: events (official surprises), Ken French industry returns, features.
 
-Outputs (data/processed/v1/, not in git) keep Stage 1's file and column names:
+Outputs (data/processed/v1/<universe>/ for ff12 and ff49, not in git) keep Stage 1's names:
     events.csv    one row per FOMC monetary event 1994-02-04 onward
     returns.csv   one row per (event, industry): ret_1d, ret_5d, spy_1d, spy_5d, excess_1d, excess_5d
                   ("spy_*" is the benchmark column name from Stage 1; here it is the CRSP market)
-    features.csv  one row per (event, industry), everything measured at day -1
+    features.csv  one row per (event, industry), everything known before day 0:
+                  macro state at day -1; beta_mkt, beta_2y, mom_20d, vol_60d at day -1;
+                  bm (log book-to-market, Fama-French timing), size (log average firm size, last
+                  month end before day 0); fomc_beta_raw / fomc_beta_exc (the industry's slope on
+                  mps_bp over EARLIER events only, % per 10 bp, shrunk toward 0 by n / (n + 20))
     panel.csv     events x returns x features
 and docs/DATA_CARD.md.
 
@@ -45,7 +49,8 @@ MACRO_V1 = {
     "ff": lambda f: f["DFF"],
 }
 FEATURES = ["vix", "slope_2s10s", "term_10y3m", "credit", "ff",
-            "beta_mkt", "beta_2y", "mom_20d", "vol_60d", "mkt_mom_20d"]
+            "beta_mkt", "beta_2y", "mom_20d", "vol_60d", "mkt_mom_20d",
+            "bm", "size", "fomc_beta_raw", "fomc_beta_exc"]
 
 
 # ---------------- surprises ----------------
@@ -137,7 +142,8 @@ def build_events(usmpd: pd.DataFrame, stmt: pd.DataFrame, bs: pd.DataFrame, fred
 
 # ---------------- returns ----------------
 
-def build_returns(rets: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
+def build_returns(rets: pd.DataFrame, events: pd.DataFrame, industries: list[str],
+                  source: str) -> pd.DataFrame:
     days = rets.index
     growth = (1 + rets)
     rows = []
@@ -145,24 +151,54 @@ def build_returns(rets: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
         i = days.get_loc(e["trade_date"])
         r1 = rets.iloc[i]
         r5 = growth.iloc[i:i + 5].prod() - 1 if i + 5 <= len(days) else pd.Series(np.nan, index=rets.columns)
-        for ind in S.INDUSTRIES:
+        for ind in industries:
             rows.append({"event_date": e["event_date"], "trade_date": e["trade_date"], "ticker": ind,
                          "ret_1d": r1[ind], "ret_5d": r5[ind],
                          "spy_1d": r1[S.BENCHMARK], "spy_5d": r5[S.BENCHMARK],
                          "excess_1d": r1[ind] - r1[S.BENCHMARK], "excess_5d": r5[ind] - r5[S.BENCHMARK],
-                         "source": "french12"})
+                         "source": source})
     return pd.DataFrame(rows)
 
 
 # ---------------- features ----------------
 
-def build_features(rets: pd.DataFrame, fred: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
+def fomc_betas(returns: pd.DataFrame, events: pd.DataFrame, col: str) -> pd.Series:
+    """Each industry's slope of `col` (in %) on mps_bp over events strictly before this one (by
+    trade date), per 10 bp, shrunk toward 0 by n / (n + FOMC_BETA_SHRINK); 0 with fewer than
+    FOMC_BETA_MIN earlier events. Indexed by (event_date, ticker)."""
+    r = returns.merge(events[["event_date", "mps_bp"]], on="event_date").sort_values("trade_date")
+    out = pd.Series(0.0, index=r.index)
+    for _, g in r.groupby("ticker"):
+        x, y, t = g["mps_bp"].to_numpy(), g[col].to_numpy() * 100, g["trade_date"].to_numpy()
+        for k, i in enumerate(g.index):
+            prior = t < t[k]
+            n = int(prior.sum())
+            if n >= S.FOMC_BETA_MIN:
+                xp, yp = x[prior], y[prior]
+                b = np.cov(xp, yp, ddof=1)[0, 1] / np.var(xp, ddof=1)
+                out[i] = 10 * b * n / (n + S.FOMC_BETA_SHRINK)
+    return pd.Series(out.to_numpy(), index=pd.MultiIndex.from_frame(r[["event_date", "ticker"]]))
+
+
+def characteristics_asof(bm: pd.DataFrame, size: pd.DataFrame, trade_date: pd.Timestamp,
+                         ind: str) -> tuple[float, float]:
+    """log BE/ME for the Fama-French year in force (row t is used from July of year t) and log
+    average firm size at the last month end strictly before the trade date's month."""
+    yr = trade_date.year if trade_date.month >= 7 else trade_date.year - 1
+    b = bm[ind][bm.index.year <= yr].dropna()
+    z = size[ind][size.index < trade_date.normalize().replace(day=1)].dropna()
+    return (float(np.log(b.iloc[-1])) if len(b) and b.iloc[-1] > 0 else np.nan,
+            float(np.log(z.iloc[-1])) if len(z) else np.nan)
+
+
+def build_features(rets: pd.DataFrame, fred: pd.DataFrame, events: pd.DataFrame, industries: list[str],
+                   bm: pd.DataFrame, size: pd.DataFrame, returns: pd.DataFrame) -> pd.DataFrame:
     days = rets.index
     prices = (1 + rets.fillna(0)).cumprod()
     betas = bf.rolling_beta(rets, benchmark=S.BENCHMARK)
     d2 = fred["DGS2"].reindex(days)
     d2chg = d2 - d2.shift(1)                     # NaN when either day is missing (bond holidays)
-    beta2y = bf.rolling_beta(rets[S.INDUSTRIES].assign(DGS2CHG=d2chg), benchmark="DGS2CHG")
+    beta2y = bf.rolling_beta(rets[industries].assign(DGS2CHG=d2chg), benchmark="DGS2CHG")
     vols = rets.rolling(bf.VOL_WINDOW, min_periods=bf.VOL_MIN).std()
     moms = prices / prices.shift(bf.MOM_WINDOW) - 1
 
@@ -171,18 +207,24 @@ def build_features(rets: pd.DataFrame, fred: pd.DataFrame, events: pd.DataFrame)
         j = bf.day_minus_1(days, e["trade_date"])
         asof = days[j]
         macro, mdate = bf.macro_asof(fred, asof, MACRO_V1)
-        for ind in S.INDUSTRIES:
+        for ind in industries:
+            b_, z_ = characteristics_asof(bm, size, e["trade_date"], ind)
             rows.append({"event_date": e["event_date"], "ticker": ind, "asof_date": asof,
                          "macro_asof_date": mdate, **macro,
                          "beta_mkt": betas[ind].iloc[j], "beta_2y": beta2y[ind].iloc[j],
                          "mom_20d": moms[ind].iloc[j], "vol_60d": vols[ind].iloc[j],
-                         "mkt_mom_20d": moms[S.BENCHMARK].iloc[j]})
-    return pd.DataFrame(rows)
+                         "mkt_mom_20d": moms[S.BENCHMARK].iloc[j], "bm": b_, "size": z_})
+    f = pd.DataFrame(rows)
+    key = pd.MultiIndex.from_frame(f[["event_date", "ticker"]])
+    for col, name in [("ret_1d", "fomc_beta_raw"), ("excess_1d", "fomc_beta_exc")]:
+        f[name] = fomc_betas(returns, events, col).reindex(key).to_numpy()
+    return f
 
 
 # ---------------- data card ----------------
 
-def data_card(panel: pd.DataFrame, events: pd.DataFrame, info: dict, manifest: dict) -> str:
+def data_card(panels: dict, events: pd.DataFrame, info: dict, manifest: dict) -> str:
+    panel = panels[S.UNIVERSE]
     ev = events.assign(year=events["event_date"].dt.year,
                        period=np.where(events["event_date"] <= S.DEV_END, "dev", "LOCKED test"))
     cov = manifest.get("_coverage", {})
@@ -216,15 +258,18 @@ def data_card(panel: pd.DataFrame, events: pd.DataFrame, info: dict, manifest: d
             "Events per year (scheduled / unscheduled):", "",
             md(ev.pivot_table(index="year", columns="event_type", values="mps_bp", aggfunc="size",
                               fill_value=0).reset_index()), "",
-            "## Panel", "",
-            f"- rows: {len(panel):,} = {panel['event_date'].nunique()} events x {panel['ticker'].nunique()} industries",
-            f"- target `excess_1d` = industry minus CRSP value-weighted market, close day -1 to close day 0",
+            "## Panels", "",
+            *[f"- `{u}`: {len(p):,} rows = {p['event_date'].nunique()} events x {p['ticker'].nunique()} industries"
+              for u, p in panels.items()],
+            "- targets: `ret_1d` = industry return, close day -1 to close day 0; `excess_1d` = the same "
+            "minus the CRSP value-weighted market",
+            f"- tables below: main universe `{S.UNIVERSE}`",
             "", "Missing values per column:", "",
             md(panel.isna().sum().rename("missing").reset_index().rename(columns={"index": "column"})
                .query("missing > 0") if panel.isna().sum().any()
                else pd.DataFrame({"column": ["(none)"], "missing": [0]})), "",
             "Feature summary (dev years):", "",
-            md(panel[panel["event_date"] <= S.DEV_END][[S.SHOCK, "excess_1d"] + FEATURES].describe().T[
+            md(panel[panel["event_date"] <= S.DEV_END][[S.SHOCK, "ret_1d", "excess_1d"] + FEATURES].describe().T[
                 ["count", "mean", "std", "min", "max"]].round(4).reset_index().rename(columns={"index": "column"})),
             ""]
     return "\n".join(out)
@@ -241,23 +286,30 @@ def md(df: pd.DataFrame) -> str:
 
 def main() -> None:
     import json
-    S.PROCESSED.mkdir(parents=True, exist_ok=True)
-    rets = fetch.load_industry_returns()
-    rets = rets[rets.index >= "1990-01-01"]
     fred = fetch.load_fred()
-    events, info = build_events(fetch.load_usmpd(), fetch.load_usmpd(sheet="Statements"),
-                                fetch.load_bauer_swanson(), fred, rets.index)
-    events = events[events["trade_date"] <= rets.index.max()]
-    returns = build_returns(rets, events)
-    features = build_features(rets, fred, events)
-    panel = (returns.merge(events, on=["event_date", "trade_date"], validate="many_to_one")
-             .merge(features, on=["event_date", "ticker"], validate="one_to_one"))
-
-    for name, df in [("events", events), ("returns", returns), ("features", features), ("panel", panel)]:
-        df.to_csv(S.PROCESSED / f"{name}.csv", index=False, date_format="%Y-%m-%d")
-        print(f"{name}: {df.shape}")
+    panels = {}
+    for uni in S.UNIVERSES:
+        out = S.processed(uni)
+        out.mkdir(parents=True, exist_ok=True)
+        rets = fetch.load_industry_returns(universe=uni)
+        rets = rets[rets.index >= "1990-01-01"]
+        dev = rets.loc[S.SAMPLE_START:S.DEV_END]
+        industries = [c for c in rets.columns if c != S.BENCHMARK
+                      and dev[c].notna().mean() >= S.MIN_INDUSTRY_COVERAGE]
+        bm, size = fetch.load_characteristics(universe=uni)
+        events, info = build_events(fetch.load_usmpd(), fetch.load_usmpd(sheet="Statements"),
+                                    fetch.load_bauer_swanson(), fred, rets.index)
+        events = events[events["trade_date"] <= rets.index.max()]
+        returns = build_returns(rets, events, industries, f"french_{uni}")
+        features = build_features(rets, fred, events, industries, bm, size, returns)
+        panel = (returns.merge(events, on=["event_date", "trade_date"], validate="many_to_one")
+                 .merge(features, on=["event_date", "ticker"], validate="one_to_one"))
+        for name, df in [("events", events), ("returns", returns), ("features", features), ("panel", panel)]:
+            df.to_csv(out / f"{name}.csv", index=False, date_format="%Y-%m-%d")
+            print(f"{uni}/{name}: {df.shape}")
+        panels[uni] = panel
     manifest = json.loads((S.RAW / "manifest.json").read_text(encoding="utf-8"))
-    (S.ROOT / "docs" / "DATA_CARD.md").write_text(data_card(panel, events, info, manifest), encoding="utf-8")
+    (S.ROOT / "docs" / "DATA_CARD.md").write_text(data_card(panels, events, info, manifest), encoding="utf-8")
     print(json.dumps(info, indent=2))
 
 

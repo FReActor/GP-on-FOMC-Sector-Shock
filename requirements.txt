@@ -7,3 +7,4 @@ jupyter
 sympy
 matplotlib
 pytest
+pysr>=2.0        # Stage 2 symbolic regression; first import installs Julia (~1 GB, one time)

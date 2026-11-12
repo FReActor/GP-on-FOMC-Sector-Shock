@@ -72,9 +72,12 @@ def _toy_panel(n_events=120, seed=0):
     for d in dates:
         s = rng.normal(0, 6)
         for t, beta in [("A", 1.4), ("B", 0.6)]:
+            exc = -0.0005 * s * (beta - 1) + rng.normal(0, 0.002)
             rows.append({"event_date": d, "ticker": t, "mps_bp": s, "beta_mkt": beta + rng.normal(0, 0.05),
-                         "excess_1d": -0.0005 * s * (beta - 1) + rng.normal(0, 0.002),
-                         **{c: rng.normal() for c in models.ENET_BASE if c not in ("s", "beta_mkt")}})
+                         "excess_1d": exc, "ret_1d": exc - 0.0005 * s, "zlb": False,
+                         "fomc_beta_raw": -0.5 * beta, "fomc_beta_exc": -0.5 * (beta - 1),
+                         **{c: rng.normal() for c in models.ENET_BASE
+                            if c not in ("s", "beta_mkt", "fomc_beta")}})
     return pd.DataFrame(rows)
 
 
@@ -87,18 +90,35 @@ def test_linear_beta_recovers_theory_sign():
     assert predict(hi)[0] < 0 < predict(lo)[0]
 
 
+def test_fomc_beta_matches_the_target():
+    p = _toy_panel()
+    assert (models.Design(p, "ret_1d")(p)["fomc_beta"].corr(p["fomc_beta_raw"])) > 0.99
+    assert (models.Design(p, "excess_1d")(p)["fomc_beta"].corr(p["fomc_beta_exc"])) > 0.99
+
+
+def test_every_main_model_fits_and_predicts():
+    from src.v1.run import MAIN_MODELS
+    p = _toy_panel(80)
+    for name in [m for m in MAIN_MODELS if m not in ("gp_pooled", "pysr_pooled")]:
+        for target in ("ret_1d", "excess_1d"):
+            predict, _ = models.fit(name, p, target=target)
+            assert np.isfinite(predict(p.iloc[:6])).all(), name
+
+
 def test_design_uses_training_stats_only():
     p = _toy_panel()
     train, other = p.iloc[:100], p.iloc[100:].assign(vix=1000.0)
     d = models.Design(train)
     assert d.mu["vix"] == pytest.approx(train["vix"].mean())
-    assert (d(other)["vix"] > 100).all()                  # not re-standardized on new rows
+    x = d(other)
+    assert (x["vix"] == models.CLIP).all()               # not re-standardized, and capped at +CLIP
+    assert x.drop(columns=["ticker", "s", "s10"]).abs().max().max() <= models.CLIP
 
 
 def test_gp_settings_are_passed_explicitly():
     p = _toy_panel(80)                                    # ~10 years, so the 3-year inner split is non-empty
     tiny = {**models.GP_SETTINGS, "population_size": 30, "generations": 2}
-    predict, info = models.fit("gp_pooled", p, 0, None, tiny, [0.01])
+    predict, info = models.fit("gp_pooled", p, 0, None, tiny, [0.01], target="excess_1d")
     assert info["parsimony"] == 0.01 and np.isfinite(predict(p.iloc[:5])).all()
 
 
@@ -113,6 +133,24 @@ def test_clark_west_detects_a_real_signal():
     assert t > 3 and pval < 0.01
     noise = p.assign(yhat=rng.normal(0, 0.5, 400))
     assert report.clark_west(report.event_losses(noise))[1] > 0.05 or True   # no false certainty required
+
+
+def test_cross_sectional_metrics_ignore_the_level():
+    p = pd.DataFrame({"event_date": [1, 1, 2, 2], "y": [1.0, -1.0, 3.0, 1.0],
+                      "yhat": [10.5, 9.5, -4.0, -5.0], "ybar": 0.0})
+    assert report.xs_r2(p) == pytest.approx(0.75)        # spread right in direction, half the size
+    assert np.allclose(report.rank_ic(p), 1.0)
+
+
+def test_placebo_permutes_events_not_rows():
+    from src.v1 import run
+    real = run.panel_for(S.UNIVERSE, "main") if REAL.exists() else None
+    if real is None:
+        pytest.skip("needs the built panel")
+    pl = run.panel_for(S.UNIVERSE, "placebo0")
+    assert (pl.groupby("event_date")["mps_bp"].nunique() == 1).all()
+    assert sorted(pl.drop_duplicates("event_date")["mps_bp"]) == sorted(real.drop_duplicates("event_date")["mps_bp"])
+    assert not np.allclose(pl["mps_bp"], real["mps_bp"])
 
 
 def test_r2_against_benchmark():
@@ -142,7 +180,7 @@ def test_inner_split_uses_last_years():
     assert fit_rows["event_date"].max() < tune["event_date"].min()
 
 
-REAL = S.PROCESSED / "panel.csv"
+REAL = S.processed() / "panel.csv"
 real = pytest.mark.skipif(not REAL.exists(), reason="run python -m src.v1.build first")
 
 
@@ -158,7 +196,20 @@ def test_real_panel_never_leaks_test_period():
 @real
 def test_real_panel_shape_and_asof():
     p = pd.read_csv(REAL, parse_dates=["event_date", "trade_date", "asof_date"])
-    assert (p.groupby("event_date")["ticker"].nunique() == 12).all()
+    assert (p.groupby("event_date")["ticker"].nunique() == p["ticker"].nunique()).all()
     assert (p["asof_date"] < p["trade_date"]).all()
     assert not p.duplicated(["event_date", "ticker"]).any()
-    assert p[["mps_bp", "excess_1d", "vix", "beta_mkt"]].notna().all().all()
+    assert p[["mps_bp", "ret_1d", "excess_1d", "vix", "beta_mkt", "size", "fomc_beta_raw"]].notna().all().all()
+
+
+@real
+def test_fomc_beta_uses_only_earlier_events():
+    from src.v1 import build
+    p = pd.read_csv(REAL, parse_dates=["event_date", "trade_date"]).sort_values("trade_date")
+    ev = p.drop_duplicates("event_date")[["event_date", "mps_bp"]]
+    r = p[["event_date", "trade_date", "ticker", "ret_1d", "excess_1d"]]
+    first = build.fomc_betas(r, ev, "ret_1d")
+    # scrambling the LAST event's returns must not change any fomc_beta, including the last one's own
+    last = p["trade_date"].max()
+    r2 = r.assign(ret_1d=np.where(r["trade_date"] == last, 0.5, r["ret_1d"]))
+    assert np.allclose(first, build.fomc_betas(r2, ev, "ret_1d").reindex(first.index))

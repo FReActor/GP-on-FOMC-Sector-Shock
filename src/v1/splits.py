@@ -23,16 +23,16 @@ import pandas as pd
 from src.v1 import settings as S
 
 
-def _read(include_unscheduled: bool) -> pd.DataFrame:
-    p = pd.read_csv(S.PROCESSED / "panel.csv", parse_dates=["event_date", "trade_date", "asof_date"])
+def _read(include_unscheduled: bool, universe: str) -> pd.DataFrame:
+    p = pd.read_csv(S.processed(universe) / "panel.csv", parse_dates=["event_date", "trade_date", "asof_date"])
     if not include_unscheduled:
         p = p[p["event_type"] == "fomc_scheduled"]
     return p.sort_values(["event_date", "ticker"]).reset_index(drop=True)
 
 
-def load_panel(include_unscheduled: bool = S.INCLUDE_UNSCHEDULED) -> pd.DataFrame:
+def load_panel(include_unscheduled: bool = S.INCLUDE_UNSCHEDULED, universe: str = S.UNIVERSE) -> pd.DataFrame:
     """Development rows only. The locked test period is dropped before anything else sees it."""
-    p = _read(include_unscheduled)
+    p = _read(include_unscheduled, universe)
     return p[p["event_date"] <= S.DEV_END].reset_index(drop=True)
 
 
@@ -54,7 +54,8 @@ def inner_split(train: pd.DataFrame, years: int = S.INNER_VAL_YEARS) -> tuple[pd
     return train[~tune], train[tune]
 
 
-def locked_test(include_unscheduled: bool = S.INCLUDE_UNSCHEDULED) -> tuple[pd.DataFrame, pd.DataFrame]:
+def locked_test(include_unscheduled: bool = S.INCLUDE_UNSCHEDULED,
+                universe: str = S.UNIVERSE) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(train = all dev years, test = 2016+). Refuses unless UNLOCK_TEST=1, and logs the unlock."""
     if os.environ.get("UNLOCK_TEST") != "1":
         raise PermissionError("The 2016+ test set is locked. It is opened once, after the freeze "
@@ -66,5 +67,5 @@ def locked_test(include_unscheduled: bool = S.INCLUDE_UNSCHEDULED) -> tuple[pd.D
     S.RESULTS.mkdir(parents=True, exist_ok=True)
     with open(S.RESULTS / "test_unlock.log", "a", encoding="utf-8") as fh:
         fh.write(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}\t{getpass.getuser()}\t{sha}\n")
-    p = _read(include_unscheduled)
+    p = _read(include_unscheduled, universe)
     return p[p["event_date"] <= S.DEV_END], p[p["event_date"] >= S.TEST_START]

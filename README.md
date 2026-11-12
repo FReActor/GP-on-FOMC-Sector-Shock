@@ -61,17 +61,22 @@ python -m src.models.gp --version v1 --scope tickers           # machine 2 -> re
 
 Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
 
-### Stage 2 (official Fed surprise, 12 Ken French industries, 1994-2026)
+### Stage 2 (official Fed surprise, Ken French 49 industries, PySR, 1994-2026)
 
-Design and decisions: [docs/STAGE2.md](docs/STAGE2.md). The 2016+ test set is locked; nothing below reads it.
+Design, decisions and dev results: [docs/STAGE2.md](docs/STAGE2.md); full tables:
+[results/v1/STAGE2_REPORT.md](results/v1/STAGE2_REPORT.md). The 2016+ test set is locked; nothing
+below reads it. PySR's first import downloads Julia (~1 GB, once).
 
 ```
-python -m src.v1.fetch                              # SF Fed USMPD + Bauer-Swanson, Ken French, FRED -> data/raw/v1/
-python -m src.v1.build                              # events, returns, features, panel -> data/processed/v1/, docs/DATA_CARD.md
-python -m src.v1.gate                               # Gate 2 sanity check -> results/v1/gate2.md
-python -m src.v1.run --models gp_pooled --quick     # ~20 s smoke test
-python -m src.v1.run                                # all models on the 4 dev folds -> results/v1/preds/
-python -m src.v1.report                             # -> results/v1/dev_report.md, dev_summary.csv
+python -m src.v1.fetch                                  # SF Fed USMPD + Bauer-Swanson, Ken French 12/49, FRED -> data/raw/v1/
+python -m src.v1.build                                  # panels for ff12 and ff49 -> data/processed/v1/<universe>/, docs/DATA_CARD.md
+python -m src.v1.gate                                   # Gate 2 sanity check -> results/v1/gate2.md
+python -m src.v1.run --models linear_beta,pysr_sens --quick   # ~1 min smoke test
+python -m src.v1.run                                    # main spec: ff49, ret_1d and excess_1d, all models (~3 h)
+python -m src.v1.run --variant orth                     # robustness: MPS_ORTH shock; also unsched, --universe ff12
+python -m src.v1.run --variant placebo0 --seeds 1       # placebo: shock permuted across events (0..19)
+python -m src.v1.report                                 # -> results/v1/STAGE2_REPORT.md, fig_*.png
+UNLOCK_TEST=1 python -m src.v1.final                    # the one-time test evaluation, after the freeze
 ```
 
 ## Working together
