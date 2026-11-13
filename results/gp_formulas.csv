@@ -199,3 +199,23 @@ v0,XLY,5d,6,0.01,1,-0.05000
 v0,XLY,5d,7,0.0005,36,"(-0.354*surprise_bp**2*Max(0.02057, surprise_bp*(0.02505 - 0.09416*Min(0.266, 0.1487*Abs(surprise_bp)))) + 0.7514)/surprise_bp"
 v0,XLY,5d,8,0.0005,30,"Min(0.717/surprise_bp, 0.728/surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(-0.431/surprise_bp, surprise_bp)))))"
 v0,XLY,5d,9,0.005,3,0.978/surprise_bp
+v1,POOLED,1d,0,0.0005,1,-0.07200
+v1,POOLED,1d,1,0.001,3,0.162*beta_1y
+v1,POOLED,1d,2,0.001,1,-0.03500
+v1,POOLED,1d,3,0.001,1,-0.04900
+v1,POOLED,1d,4,0.005,1,-0.08600
+v1,POOLED,1d,5,0.01,1,-0.03500
+v1,POOLED,1d,6,0.01,1,-0.01600
+v1,POOLED,1d,7,0.0005,2,0.003000
+v1,POOLED,1d,8,0.0005,3,0.091*beta_1y
+v1,POOLED,1d,9,0.005,1,-0.03700
+v1,POOLED,5d,0,0.005,1,-0.03600
+v1,POOLED,5d,1,0.001,1,-0.1140
+v1,POOLED,5d,2,0.0005,3,0.119*beta_1y
+v1,POOLED,5d,3,0.0005,1,-0.1370
+v1,POOLED,5d,4,0.001,4,-beta_1y/surprise_bp
+v1,POOLED,5d,5,0.001,4,-beta_1y/surprise_bp
+v1,POOLED,5d,6,0.005,1,-0.01600
+v1,POOLED,5d,7,0.0005,2,-0.1240
+v1,POOLED,5d,8,0.0005,8,0.285*beta_1y*vix*Abs(mom_20d)
+v1,POOLED,5d,9,0.0005,13,0.039*beta_1y*vix*Abs(surprise_bp)

@@ -10,6 +10,8 @@ horizon and seed:
     1. fit on split == "train" for each parsimony in PARSIMONY_GRID, score MSE on split == "val"
     2. refit on train + val with the best parsimony
     3. predict every row; metrics are computed on split == "test"
+GP settings (population, generations, functions, parsimony grid) live in config.GP /
+config.GP_PARSIMONY_GRID so the pooled and per-ticker runs on two machines match.
 The target is fit in percent (excess * 100); predictions are divided by 100 again.
 
 Outputs (version v0 shown):
@@ -46,17 +48,19 @@ from gplearn.genetic import SymbolicRegressor
 from src import config
 from src.data import hit_rate, load_panel, r2_oos, rmse
 
-FUNCS = ("add", "sub", "mul", "div", "max", "min", "abs", "neg")
-PARSIMONY_GRID = [0.0005, 0.001, 0.005, 0.01]
+FUNCS = tuple(config.GP["function_set"])
+PARSIMONY_GRID = list(config.GP_PARSIMONY_GRID)
 SCALE = 100.0  # fit in percent
 TRAIN, VAL, TEST = ["train"], ["val"], ["test"]
 FULL_TRAIN = TRAIN + VAL
 
 
 def make_gp(seed, parsimony):
-    return SymbolicRegressor(population_size=1000, generations=40, tournament_size=20,
-        function_set=FUNCS, parsimony_coefficient=parsimony, const_range=(-1.0, 1.0),
-        init_depth=(2, 4), max_samples=0.9, random_state=seed, n_jobs=1)
+    g = config.GP  # shared settings, see src/config.py
+    return SymbolicRegressor(population_size=g["population_size"], generations=g["generations"],
+        tournament_size=g["tournament_size"], function_set=FUNCS, parsimony_coefficient=parsimony,
+        const_range=g["const_range"], init_depth=g["init_depth"], max_samples=g["max_samples"],
+        random_state=seed, n_jobs=1)
 
 
 def inputs_for(version: str) -> list[str]:
