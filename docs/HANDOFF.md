@@ -146,16 +146,11 @@ Abandoned (documented): PySR `TemplateExpressionSpec` with 49 per-industry param
 
 **`gp_sens` main run:** started then stopped (the run was stopped from the app at about 02:20). Not finished.
 
-## 7. Uncommitted changes on `stage2-v1` (commit these first)
+## 7. Git state
 
-`src/v1/models.py`, `run.py`, `report.py`, `tests/test_v1.py`, `docs/STAGE2.md` (deviation 7),
-`README.md`, `docs/HANDOFF.md`, `scripts/overnight_dev.sh`, regenerated `results/v1/*` (preds are git-ignored).
-
-```
-pytest -q                                   # must show 54 passed
-git add -A && git commit -m "Stage 2: hybrid SR models, new baselines, forecast combinations, dev results"
-# ask the user before: git push origin stage2-v1
-```
+Everything above is committed locally on `stage2-v1` as commit 4352d2b (hybrid SR models, new
+baselines, combinations, dev results, this document). It is **not pushed**; ask the user before
+`git push origin stage2-v1`. Check with `pytest -q` (54 passed) before new work.
 
 ---
 
