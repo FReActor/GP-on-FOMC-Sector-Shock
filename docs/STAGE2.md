@@ -64,6 +64,16 @@ and capped at +-3 sd (in 2008 VIX reached 5+ training sd, and unbounded formulas
 | gp_pooled | gplearn genetic programming (Stage 1's engine), one formula |
 | pysr_pooled | PySR, one free formula of s and all inputs |
 | pysr_sens | PySR sensitivity model: y = industry mean + s10 * g(x), where g is a free formula of the characteristics, state and hawk flag found by the search; g is the industry's response per 10 bp |
+| linear_char | s times {beta_mkt, fomc_beta, B/M, size}, plus main effects (the richest hand-built linear model) |
+| rf, mlp | random forest; feed-forward net 32-16-8 averaged over 5 initialisations (the Gu-Kelly-Xiu 2020 black boxes) |
+| gp_sens | gplearn in the sensitivity form with linear scaling (Keijzer 2003): each program g is scored after the best a, b in y = s10*(a + b*g) |
+| pysr_mdl | sensitivity model, one search on the whole fold, formula picked by minimum description length (Bartlett et al. 2024, simplified, N = events) |
+| pysr_bag | sensitivity model, 8 bootstrap samples of events, each bag's formula picked on its out-of-bag events, forecasts averaged |
+| pysr_anchor | linear_beta plus a bagged PySR search for the *residual* sensitivity; "add nothing" is always a candidate |
+| pysr_mv | pysr_anchor plus industry-specific sensitivity offsets, fitted on out-of-bag residuals and shrunk like fomc_beta (multi-view SR as random effects) |
+| pysr_enet | every formula on the PySR Pareto front becomes a feature s10*g_k(x); an ElasticNet over those and the linear_beta terms weights them (FEAT-style, La Cava et al. 2019) |
+| linear_jk, pysr_jk | add the Jarocinski-Karadi (2020) information-shock flag: rates and stocks moved the same way in the 30-minute window. Uses same-day market information, so reported separately |
+| combo_linear, combo_sr, combo_all | equal-weight forecast combinations fixed in advance (Rapach, Strauss & Zhou 2010) |
 
 Why PySR: gplearn draws constants at random and never refines them, so small coefficients (a
 0.1% effect per 10 bp) are nearly unreachable, and its protected division creates spikes. PySR
@@ -81,6 +91,19 @@ on the whole fold. For PySR the setting is the formula size, chosen by the 1-SE 
 smallest formula whose inner-tune error is within one standard error (counted in events) of the
 best. PySR and gplearn run 10 / 5 seeds; we report the seed-averaged forecast and the
 median seed.
+
+Why the hybrid SR models (added after the first full dev run; see deviation 7). The 1-SE rule made
+`pysr_sens` choose a constant sensitivity in every fold and seed, so it only re-estimated the
+average Fed effect. Two things can stop a search from keeping real structure: the selection rule is
+too strict for a 3-year tuning window (about 24 events), or the structure is too noisy to survive a
+single search. The hybrids test each explanation separately. `pysr_mdl` replaces the inner split
+with a description-length rule on all training years. `pysr_bag` averages many searches, so a
+richer formula is kept only if it helps on held-out events. `pysr_anchor` starts from the CAPM
+channel, so the search only has to find what beta misses, which is the paper's actual question.
+`pysr_mv` adds shrunk per-industry offsets on top. `pysr_enet` uses the search to generate
+candidate nonlinear features and lets a penalised regression decide how much each one helps. A
+PySR template with 49 per-industry parameters (true multi-view SR) did not finish 40 iterations
+in 30 minutes, so `pysr_mv` uses shrunk offsets instead.
 
 ## 5. Evaluation
 
@@ -112,6 +135,15 @@ median seed.
 6. PySR formula size moved from "lowest inner-tune error" to the 1-SE rule after the first full
    run picked 11-17-node formulas on a 3-year tuning window and overfit (fold 2). Same rule for
    both PySR models and their placebo runs.
+7. After the first full dev run (with `pysr_sens` constant everywhere) we added the hybrid SR models,
+   `gp_sens`, the `rf`, `mlp` and `linear_char` baselines, the `cbi` models and the three
+   combinations. All were specified before they were run and are reported in full, including the
+   ones that lose. They run on the same dev folds and get the same placebo test (10
+   permutations). This adds models, so the paper reports how many were tried and treats the
+   locked test (run once, on the frozen list) as the evidence. Compute: one full PySR search takes
+   about 7 minutes on one core, so the dev run uses 2 seeds for the bagged models (each bag runs 40
+   iterations, not 100), 3 for `pysr_enet`, 5 for `pysr_mdl` and `gp_pooled`, and 5 placebo
+   permutations for `pysr_anchor`, `pysr_mv` and `pysr_mdl`. The final run uses more.
 
 ## 7. Dev results (validation years 2004-2015; full tables in `results/v1/STAGE2_REPORT.md`)
 
@@ -180,6 +212,7 @@ python -m src.v1.fetch && python -m src.v1.build && python -m src.v1.gate
 python -m src.v1.run                     # main: ff49, both targets (~3 h with PySR on 6 workers)
 python -m src.v1.run --variant orth      # robustness; also: unsched, --universe ff12
 python -m src.v1.run --variant placebo3 --models linear_beta,pysr_sens --seeds 1
+python -m src.v1.run --models linear_jk,pysr_jk          # information-shock models (same-day stock move)
 python -m src.v1.report                  # -> results/v1/STAGE2_REPORT.md, fig_*.png
 UNLOCK_TEST=1 python -m src.v1.final     # ONCE, after the freeze
 ```

@@ -75,6 +75,8 @@ python -m src.v1.run --models linear_beta,pysr_sens --quick   # ~1 min smoke tes
 python -m src.v1.run                                    # main spec: ff49, ret_1d and excess_1d, all models (~3 h)
 python -m src.v1.run --variant orth                     # robustness: MPS_ORTH shock; also unsched, --universe ff12
 python -m src.v1.run --variant placebo0 --seeds 1       # placebo: shock permuted across events (0..19)
+python -m src.v1.run --models pysr_bag,pysr_anchor,pysr_mv --seeds 5   # hybrid SR (bagged, CAPM-anchored, industry offsets)
+python -m src.v1.run --models linear_jk,pysr_jk         # information-shock models (use the 30-min stock move)
 python -m src.v1.report                                 # -> results/v1/STAGE2_REPORT.md, fig_*.png
 UNLOCK_TEST=1 python -m src.v1.final                    # the one-time test evaluation, after the freeze
 ```

@@ -33,8 +33,17 @@ from scipy import stats
 
 from src.v1 import settings as S
 
-ORDER = ["zero", "mean", "linear", "linear_pooled", "linear_beta", "linear_fomc", "linear_interact",
-         "linear_interact_pooled", "enet", "hgb", "gp_pooled", "gp_industry", "pysr_pooled", "pysr_sens"]
+ORDER = ["zero", "mean", "linear", "linear_pooled", "linear_beta", "linear_fomc", "linear_char", "linear_interact",
+         "linear_interact_pooled", "enet", "hgb", "rf", "mlp", "gp_pooled", "gp_industry", "gp_sens",
+         "pysr_pooled", "pysr_sens", "pysr_mdl", "pysr_bag", "pysr_anchor", "pysr_mv", "pysr_enet",
+         "linear_jk", "pysr_jk"]
+# Forecast combinations (Rapach, Strauss & Zhou 2010): equal-weight means of seed-averaged
+# forecasts, fixed in advance (not chosen on the results).
+COMBOS = {"combo_linear": ["linear_beta", "linear_fomc", "linear_char"],
+          "combo_sr": ["pysr_anchor", "pysr_mv", "pysr_bag", "linear_beta", "linear_fomc"],
+          "combo_all": ["linear_beta", "linear_fomc", "linear_char", "linear_interact_pooled", "enet", "hgb", "rf",
+                        "mlp", "gp_sens", "pysr_sens", "pysr_mdl", "pysr_bag", "pysr_anchor", "pysr_mv",
+                        "pysr_enet"]}
 EXPLAIN = {
     "zero": "predict 0",
     "mean": "industry's training mean (the r2 benchmark)",
@@ -50,8 +59,23 @@ EXPLAIN = {
     "gp_industry": "gplearn GP, one formula per industry",
     "pysr_pooled": "PySR symbolic regression, one formula",
     "pysr_sens": "PySR sensitivity: mean + s10*g(x)",
+    "linear_char": "s x {beta_mkt, fomc_beta, bm, size} + mains",
+    "rf": "random forest (black box)",
+    "mlp": "neural net 32-16-8, 5-net average (black box)",
+    "gp_sens": "gplearn sensitivity + linear scaling",
+    "pysr_mdl": "PySR sensitivity, formula by MDL",
+    "pysr_bag": "PySR sensitivity, 8 event-bootstrap bags",
+    "pysr_anchor": "linear_beta + PySR residual sensitivity, bagged",
+    "pysr_mv": "pysr_anchor + shrunk industry offsets",
+    "pysr_enet": "PySR front as features + ElasticNet (FEAT-style)",
+    "linear_jk": "linear_beta + s*cbi (uses 30-min stock move)",
+    "pysr_jk": "pysr_anchor + cbi input (uses 30-min stock move)",
+    "combo_linear": "mean of linear_beta, linear_fomc, linear_char",
+    "combo_sr": "mean of pysr_anchor, pysr_mv, pysr_bag, linear_beta, linear_fomc",
+    "combo_all": "mean of all 15 non-trivial models",
 }
-SR = {"gp_pooled", "gp_industry", "pysr_pooled", "pysr_sens"}
+SR = {"gp_pooled", "gp_industry", "gp_sens", "pysr_pooled", "pysr_sens", "pysr_mdl", "pysr_bag", "pysr_anchor",
+      "pysr_mv", "pysr_enet", "pysr_jk"}
 REF = "linear_fomc"
 
 
@@ -111,6 +135,20 @@ def load(d) -> dict[str, pd.DataFrame]:
         path = d / "preds" / f"{m}.csv"
         if path.exists():
             out[m] = pd.read_csv(path, parse_dates=["event_date"])
+    return out | combos(out)
+
+
+def combos(preds: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Equal-weight combinations; only built when every member exists (else the combo is skipped)."""
+    out = {}
+    key = ["event_date", "ticker", "fold"]
+    for name, members in COMBOS.items():
+        if not all(m in preds for m in members):
+            continue
+        ens = [ensemble(preds[m]).set_index(key) for m in members]
+        p = ens[0][["y", "ybar"]].copy()
+        p["yhat"] = pd.concat([e["yhat"] for e in ens], axis=1).mean(axis=1)
+        out[name] = p.reset_index().assign(seed=0)
     return out
 
 
@@ -157,9 +195,17 @@ def formulas(d) -> pd.DataFrame:
         runs.loc[gp, "formula"] = [to_formula(p, i.split(","), n) for p, i, n in
                                    zip(runs.loc[gp, "program"], runs.loc[gp, "inputs"], runs.loc[gp, "complexity"])]
     runs["formula"] = runs["formula"].astype(str)
+    # text searched for inputs: every bag's formula for bagged models; only the SR features for
+    # pysr_enet (its linear_beta part is fixed, not found by the search)
+    text = runs["formula"].copy()
+    if "bag_formulas" in runs:
+        has = runs["bag_formulas"].notna()
+        text[has] = runs.loc[has, "bag_formulas"].astype(str)
+    enet = runs["model"] == "pysr_enet"
+    text[enet] = text[enet].str.split("]", n=1).str[-1]
     names = sorted(set(",".join(runs["inputs"].dropna()).split(",")))
     for f in names:
-        runs[f"uses_{f}"] = runs["formula"].map(lambda s, f=f: bool(re.search(rf"\b{f}\b", s)))
+        runs[f"uses_{f}"] = text.map(lambda s, f=f: bool(re.search(rf"\b{f}\b", s)))
     runs["constant"] = ~runs[[f"uses_{f}" for f in names]].any(axis=1)
     return runs
 

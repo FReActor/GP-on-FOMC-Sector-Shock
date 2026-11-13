@@ -39,9 +39,14 @@ from src.v1 import settings as S
 from src.v1.splits import dev_folds, load_panel
 
 MAIN_MODELS = ["zero", "mean", "linear", "linear_pooled", "linear_beta", "linear_fomc",
-               "linear_interact_pooled", "enet", "hgb", "gp_pooled", "pysr_pooled", "pysr_sens"]
-STOCHASTIC = {"gp_pooled", "gp_industry", "pysr_pooled", "pysr_sens"}
-JULIA = {"pysr_pooled", "pysr_sens"}
+               "linear_interact_pooled", "linear_char", "enet", "hgb", "rf", "mlp", "gp_pooled", "gp_sens",
+               "pysr_pooled", "pysr_sens", "pysr_mdl", "pysr_bag", "pysr_anchor", "pysr_mv", "pysr_enet"]
+# models that use the 30-min stock-market reaction (same-day information), reported separately
+JK_MODELS = ["linear_jk", "pysr_jk"]
+PYSR = {"pysr_pooled", "pysr_sens"} | M.SR_HYBRID
+STOCHASTIC = {"gp_pooled", "gp_industry", "gp_sens"} | PYSR
+JULIA = PYSR
+HEAVY = {"enet", "hgb", "rf", "mlp"}          # deterministic but slow: folds in parallel
 
 
 def out_dir(universe: str, target: str, variant: str):
@@ -65,16 +70,26 @@ def panel_for(universe: str, variant: str) -> pd.DataFrame:
 def config_hash(model: str, target: str, gp_settings: dict, gp_grid: list[float], pysr_settings: dict) -> str:
     cfg = {"v": 5, "model": model, "target": target, "shock": S.SHOCK, "winsor": S.WINSOR, "clip": M.CLIP,
            "folds": S.FOLDS, "inner": S.INNER_VAL_YEARS, "base": M.ENET_BASE, "flags": M.FLAGS}
-    if model in ("gp_pooled", "gp_industry"):
+    if model in ("gp_pooled", "gp_industry", "gp_sens"):
         cfg |= {"gp": gp_settings, "parsimony": gp_grid,
-                "inputs": M.SR_INPUTS if model == "gp_pooled" else M.GP_INDUSTRY_INPUTS}
-    if model in ("pysr_pooled", "pysr_sens"):
-        cfg |= {"pysr": pysr_settings, "inputs": M.SENS_X if model == "pysr_sens" else M.SR_INPUTS,
-                "sens_loss": M.SENS_LOSS if model == "pysr_sens" else None}
+                "inputs": {"gp_pooled": M.SR_INPUTS, "gp_industry": M.GP_INDUSTRY_INPUTS}.get(model, M.SENS_X)}
+    if model in PYSR:
+        cfg |= {"pysr": pysr_settings, "inputs": M.SR_INPUTS if model == "pysr_pooled" else M.SENS_X,
+                "sens_loss": None if model == "pysr_pooled" else M.SENS_LOSS}
+    if model in M.SR_HYBRID:
+        cfg |= {"bags": M.BAGS, "anchor": M.ANCHOR, "symbols": M.SYMBOLS, "shrink": S.FOMC_BETA_SHRINK,
+                "jk": M.SENS_X_JK if model == "pysr_jk" else None,
+                "enet": M.ENET_GRID if model == "pysr_enet" else None}
+    if model in ("pysr_bag", "pysr_anchor", "pysr_jk"):
+        cfg |= {"bag_iters": M.BAG_ITERS}
     if model == "enet":
         cfg |= {"grid": M.ENET_GRID}
     if model == "hgb":
         cfg |= {"grid": M.HGB_GRID}
+    if model == "rf":
+        cfg |= {"grid": M.RF_GRID}
+    if model == "mlp":
+        cfg |= {"grid": M.MLP_GRID, "layers": M.MLP_LAYERS, "ensemble": M.MLP_ENSEMBLE}
     if model in M.SPECS:
         cfg |= {"spec": M.SPECS[model]}
     return hashlib.sha1(json.dumps(cfg, sort_keys=True, default=str).encode()).hexdigest()[:10]
@@ -98,6 +113,15 @@ def _task(model, target, fold, train, val, seed, ticker, cache, gp_settings, gp_
     return res
 
 
+def _with_offsets(preds: pd.DataFrame, run_info: dict, shock_of: pd.Series):
+    u = json.loads(run_info["offsets"])
+    rows = preds.assign(**{S.SHOCK: preds["event_date"].map(shock_of).to_numpy(float)})
+    p = preds.assign(yhat=M.add_offsets(rows, preds["yhat"].to_numpy(float), u))
+    r = run_info | {"model": "pysr_mv", "engine": "pysr_bag+offsets",
+                    "formula": run_info["formula"] + "; + s10*u_industry (shrunk)"}
+    return p, r
+
+
 def run(models: list[str], seeds: list[int], jobs: int, universe: str = S.UNIVERSE, target: str = S.TARGET,
         variant: str = "main", gp_settings: dict | None = None, gp_grid: list[float] | None = None,
         pysr_settings: dict | None = None, out=None, julia_jobs: int | None = None) -> None:
@@ -112,16 +136,22 @@ def run(models: list[str], seeds: list[int], jobs: int, universe: str = S.UNIVER
     old_runs = pd.read_csv(runs_path) if runs_path.exists() else pd.DataFrame()
     tag = f"{universe}_{target}_{variant}" + ("_quick" if out.name == "quick" or "quick" in str(out) else "")
 
+    shock_of = panel.drop_duplicates("event_date").set_index("event_date")[S.SHOCK]
     for model in models:
-        h = config_hash(model, target, gp_settings, gp_grid, pysr_settings)
-        cache_dir = S.PROCESSED / "cache" / tag / model / h
+        # pysr_mv = pysr_anchor (same bags, deterministic) + shrunk industry offsets, so it reuses
+        # the anchor's runs (and cache) and only adds the offsets
+        fit_model = "pysr_anchor" if model == "pysr_mv" else model
+        h = config_hash(fit_model, target, gp_settings, gp_grid, pysr_settings)
+        cache_dir = S.PROCESSED / "cache" / tag / fit_model / h
         tickers = sorted(panel["ticker"].unique()) if model == "gp_industry" else [None]
         model_seeds = seeds if model in STOCHASTIC else [0]
         tasks = [(f, seed, t) for f in folds for seed in model_seeds for t in tickers]
-        workers = 1 if model not in STOCHASTIC else (julia_jobs or min(jobs, 6)) if model in JULIA else jobs
+        workers = ((julia_jobs or min(jobs, 6)) if model in JULIA else jobs if model in STOCHASTIC | HEAVY
+                   else 1)
+        workers = min(workers, len(tasks))
         print(f"{tag} {model} [{h}]: {len(tasks)} runs on {workers} workers", flush=True)
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = [ex.submit(_task, model, target, f["fold"], f["train"], f["val"], seed, t,
+            futs = [ex.submit(_task, fit_model, target, f["fold"], f["train"], f["val"], seed, t,
                               cache_dir / f"f{f['fold']}_s{seed}_{t or 'POOLED'}.pkl",
                               gp_settings, gp_grid, pysr_settings)
                     for f, seed, t in tasks]
@@ -130,6 +160,8 @@ def run(models: list[str], seeds: list[int], jobs: int, universe: str = S.UNIVER
                 res.append(fu.result())
                 if i % 10 == 0 or i == len(futs):
                     print(f"  {model} {i}/{len(futs)}", flush=True)
+        if model == "pysr_mv":
+            res = [_with_offsets(p, r, shock_of) for p, r in res]
         preds = pd.concat([p for p, _ in res], ignore_index=True)
         preds.to_csv(out / "preds" / f"{model}.csv", index=False, date_format="%Y-%m-%d")
         runs = pd.DataFrame([r for _, r in res]).assign(config=h)

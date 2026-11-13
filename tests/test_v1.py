@@ -99,10 +99,47 @@ def test_fomc_beta_matches_the_target():
 def test_every_main_model_fits_and_predicts():
     from src.v1.run import MAIN_MODELS
     p = _toy_panel(80)
-    for name in [m for m in MAIN_MODELS if m not in ("gp_pooled", "pysr_pooled")]:
+    from src.v1.run import JULIA, JK_MODELS
+    gp_small = {**models.GP_SETTINGS, "population_size": 50, "generations": 2}
+    for name in [m for m in MAIN_MODELS + JK_MODELS if m not in JULIA and m != "gp_pooled"]:
         for target in ("ret_1d", "excess_1d"):
-            predict, _ = models.fit(name, p, target=target)
+            predict, _ = models.fit(name, p, target=target, gp_settings=gp_small, gp_grid=[0.002])
             assert np.isfinite(predict(p.iloc[:6])).all(), name
+
+
+def test_cbi_flags_information_shocks():
+    p = _toy_panel(10).assign(hf_sp500_pct=lambda d: np.where(d["mps_bp"] > 0, 0.3, 0.3))
+    x = models.Design(p)(p)
+    # hawkish surprise with stocks up = information shock; dovish with stocks up = pure policy
+    assert (x["cbi"] == (p["mps_bp"] > 0).astype(float).to_numpy()).all()
+    assert (models.Design(p.drop(columns="hf_sp500_pct"))(p.drop(columns="hf_sp500_pct"))["cbi"] == 0).all()
+
+
+def test_linear_scaling_fitness_recovers_scale():
+    rng = np.random.default_rng(0)
+    w, g = rng.normal(size=500), rng.normal(size=500)
+    y = w * (0.7 - 2.0 * g)
+    assert models._ls_mse(y, g, w) == pytest.approx(0.0, abs=1e-12)
+    assert models._ls_mse(y, 5 * g + 3, w) == pytest.approx(0.0, abs=1e-12)   # scale/shift free
+    assert models._ls_mse(y, rng.normal(size=500), w) > 0.5
+
+
+def test_mdl_prefers_small_formula_unless_fit_improves_a_lot():
+    eqs = ["0.5", "0.5 + (0.2 * beta_mkt)", "((0.5 + (0.2 * beta_mkt)) * (vix - 0.1)) + (0.3 * bm)"]
+    cx = np.array([1, 5, 11])
+    assert models.mdl_choice(np.array([1.0, 0.999, 0.998]), cx, eqs, 200) == 0
+    assert models.mdl_choice(np.array([1.0, 0.80, 0.799]), cx, eqs, 200) == 1
+    assert models._n_params("x1 - 2.5e-3*x2 + 0.1") == 2
+
+
+def test_combos_average_members():
+    from src.v1 import report
+    base = pd.DataFrame({"event_date": pd.to_datetime(["2000-01-01"] * 2), "ticker": ["A", "B"], "fold": 1,
+                         "seed": 0, "y": [0.01, -0.01], "ybar": [0.0, 0.0]})
+    preds = {m: base.assign(yhat=[k, -k]) for k, m in enumerate(report.COMBOS["combo_linear"], 1)}
+    out = report.combos(preds)
+    assert list(out) == ["combo_linear"]
+    assert out["combo_linear"]["yhat"].tolist() == [2.0, -2.0]
 
 
 def test_design_uses_training_stats_only():
