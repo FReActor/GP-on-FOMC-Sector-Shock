@@ -15,7 +15,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install "pandas>=2.0" "numpy>=1.24" pytest
+        run: pip install "pandas>=2.0" "numpy>=1.24" scikit-learn gplearn sympy pytest
       # Data files are not in git, so tests that need real data are skipped here;
       # the synthetic tests cover the logic. Run the full suite locally after the pipeline.
       - name: Run tests

@@ -7,35 +7,37 @@ Versions:
 
 For each scope (one POOLED model over all tickers = main result, plus one model per ticker),
 horizon and seed:
-    1. fit on split == "train" for each parsimony in PARSIMONY_GRID, score MSE on split == "val"
+    1. fit on split == "train" for each parsimony in config.GP_PARSIMONY_GRID, score MSE on split == "val"
     2. refit on train + val with the best parsimony
     3. predict every row; metrics are computed on split == "test"
-GP settings (population, generations, functions, parsimony grid) live in config.GP /
-config.GP_PARSIMONY_GRID so the pooled and per-ticker runs on two machines match.
 The target is fit in percent (excess * 100); predictions are divided by 100 again.
+GP settings (population, generations, functions, ...) live in config.GP so two machines match.
 
-Outputs (version v0 shown):
-    results/gp_v0.csv              one row per (ticker, horizon): median r2_oos across seeds,
-                                   r2_oos_min / r2_oos_max, rmse_oos, hit_rate, complexity
-    results/gp_v0_seeds.csv        one row per (ticker, horizon, seed), with the formula
-    results/gp_formulas.csv        version, ticker, horizon, seed, parsimony, length, formula (sympy)
-    results/preds/gp_v0.csv        pooled model predictions: event_date, ticker, horizon, split, seed, y, yhat
-    results/preds/gp_v0_ticker.csv same, from the per-ticker models
+--scope picks which models to run, so the work can be split across machines:
+    all      POOLED + every ticker (default)  -> gp_<v>.csv, gp_<v>_seeds.csv,
+                                                 preds/gp_<v>.csv (pooled), preds/gp_<v>_ticker.csv
+    pooled   POOLED only                      -> gp_<v>.csv, gp_<v>_seeds.csv, preds/gp_<v>.csv
+    tickers  one model per ticker only        -> gp_<v>_per_ticker.csv, gp_<v>_per_ticker_seeds.csv,
+                                                 preds/gp_<v>_per_ticker.csv
+gp_<v>.csv: one row per (ticker, horizon) with median r2_oos across seeds, r2_oos_min / max,
+rmse_oos, hit_rate, complexity. *_seeds.csv: one row per (ticker, horizon, seed) with the formula.
+results/gp_formulas.csv collects formulas from every run (version, ticker, horizon, seed,
+parsimony, length, formula); a run replaces only its own (version, ticker) rows, so the pooled
+and per-ticker runs can both write to it.
 
---scope splits one run across machines (same seeds and settings either way):
-    all     POOLED + every ticker (default), file names as above
-    pooled  POOLED only        -> results/gp_v1_pooled.csv, gp_v1_pooled_seeds.csv, preds/gp_v1_pooled.csv
-    ticker  per-ticker only    -> results/gp_v1_per_ticker.csv, gp_v1_per_ticker_seeds.csv, preds/gp_v1_per_ticker.csv
-src/compare.py combines gp_v1_pooled + gp_v1_per_ticker into model gp_v1 when gp_v1.csv is absent.
-gp_formulas.csv is shared: a run replaces only the rows of its own version and tickers.
+--quick is a smoke test (small population, few generations, 1 seed, 1d only). It writes to
+data/processed/gp_quick/ and never touches results/.
 
 Run from the repo root:
     python -m src.models.gp --version v0
-    python -m src.models.gp --version v1 --scope pooled   # Charles
-    python -m src.models.gp --version v1 --scope ticker   # Abhi
+    python -m src.models.gp --version v1 --scope pooled      # one machine
+    python -m src.models.gp --version v1 --scope tickers     # the other machine
+    python -m src.models.gp --version v1 --scope tickers --quick   # ~1 minute check first
 """
 
 import argparse
+import hashlib
+import json
 import os
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -48,19 +50,20 @@ from gplearn.genetic import SymbolicRegressor
 from src import config
 from src.data import hit_rate, load_panel, r2_oos, rmse
 
-FUNCS = tuple(config.GP["function_set"])
 PARSIMONY_GRID = list(config.GP_PARSIMONY_GRID)
 SCALE = 100.0  # fit in percent
 TRAIN, VAL, TEST = ["train"], ["val"], ["test"]
 FULL_TRAIN = TRAIN + VAL
+SCOPES = ("all", "pooled", "tickers")
+QUICK = dict(population_size=200, generations=5)  # --quick overrides
 
 
-def make_gp(seed, parsimony):
-    g = config.GP  # shared settings, see src/config.py
-    return SymbolicRegressor(population_size=g["population_size"], generations=g["generations"],
-        tournament_size=g["tournament_size"], function_set=FUNCS, parsimony_coefficient=parsimony,
-        const_range=g["const_range"], init_depth=g["init_depth"], max_samples=g["max_samples"],
-        random_state=seed, n_jobs=1)
+def make_gp(seed, parsimony, settings: dict | None = None):
+    s = settings or config.GP
+    return SymbolicRegressor(population_size=s["population_size"], generations=s["generations"],
+        tournament_size=s["tournament_size"], function_set=s["function_set"],
+        parsimony_coefficient=parsimony, const_range=s["const_range"], init_depth=s["init_depth"],
+        max_samples=s["max_samples"], random_state=seed, n_jobs=1)
 
 
 def inputs_for(version: str) -> list[str]:
@@ -89,12 +92,14 @@ def design(panel: pd.DataFrame, version: str, horizon: str) -> tuple[pd.DataFram
 
 
 def fit_predict(panel: pd.DataFrame, seed: int, version: str = "v0", horizon: str = "1d",
-                ticker: str | None = None) -> tuple[pd.DataFrame, dict]:
+                ticker: str | None = None, settings: dict | None = None,
+                grid: list[float] | None = None) -> tuple[pd.DataFrame, dict]:
     """Select parsimony on val, refit on train + val, predict all rows.
 
     ticker=None fits the pooled model. Returns (preds, info) where preds has columns
     event_date, ticker, horizon, split, seed, y, yhat (decimals) and info holds the chosen
     parsimony, the formula and its length. Used by src/evaluate/placebo.py as well.
+    settings / grid default to config.GP / config.GP_PARSIMONY_GRID.
     """
     d, cols = design(panel, version, horizon)
     if ticker is not None:
@@ -103,12 +108,12 @@ def fit_predict(panel: pd.DataFrame, seed: int, version: str = "v0", horizon: st
     tr, va, full = d[d["split"].isin(TRAIN)], d[d["split"].isin(VAL)], d[d["split"].isin(FULL_TRAIN)]
 
     val_mse = {}
-    for p in PARSIMONY_GRID:
-        gp = make_gp(seed, p).fit(X(tr), tr["y"].to_numpy() * SCALE)
+    for p in (grid or PARSIMONY_GRID):
+        gp = make_gp(seed, p, settings).fit(X(tr), tr["y"].to_numpy() * SCALE)
         val_mse[p] = float(np.mean((gp.predict(X(va)) / SCALE - va["y"].to_numpy()) ** 2))
     best = min(val_mse, key=val_mse.get)
 
-    gp = make_gp(seed, best).fit(X(full), full["y"].to_numpy() * SCALE)
+    gp = make_gp(seed, best, settings).fit(X(full), full["y"].to_numpy() * SCALE)
     preds = d[["event_date", "ticker", "split", "y"]].copy()
     preds.insert(2, "horizon", horizon)
     preds.insert(4, "seed", seed)
@@ -144,52 +149,85 @@ def to_formula(program: str, cols: list[str], length: int | None = None) -> str:
     return str(sp.N(expr, 4))
 
 
-def save_formulas(seeds: pd.DataFrame, version: str) -> None:
-    """Write results/gp_formulas.csv (all versions in one file; this version's rows replaced)."""
-    path = config.RESULTS / "gp_formulas.csv"
+def save_formulas(seeds: pd.DataFrame, version: str, out_dir=None) -> None:
+    """Write gp_formulas.csv (all versions and scopes in one file).
+
+    Only rows with this version AND a ticker in this run are replaced, so a pooled run and a
+    per-ticker run (possibly on different machines) don't erase each other's formulas.
+    """
+    path = (out_dir or config.RESULTS) / "gp_formulas.csv"
     new = seeds.assign(version=version)[["version", "ticker", "horizon", "seed", "parsimony", "length", "formula"]]
     if path.exists():
         old = pd.read_csv(path)
-        replaced = (old["version"] == version) & old["ticker"].isin(new["ticker"].unique())
-        new = pd.concat([old[~replaced], new], ignore_index=True)
+        keep = ~((old["version"] == version) & old["ticker"].isin(new["ticker"].unique()))
+        new = pd.concat([old[keep], new], ignore_index=True)
     new.to_csv(path, index=False)
 
 
-def _cache_path(version, scope, horizon, seed):
-    return config.PROCESSED / "gp_cache" / f"{version}_split{config.SPLIT}" / f"{scope}_{horizon}_{seed}.pkl"
+def settings_tag(settings: dict, grid: list[float]) -> str:
+    """Short hash of the GP settings, so changing config.GP never reuses stale cached runs."""
+    blob = json.dumps({"gp": settings, "grid": grid}, sort_keys=True, default=list)
+    return hashlib.sha1(blob.encode()).hexdigest()[:8]
 
 
-def _task(panel, version, scope, horizon, seed):
+def _cache_path(version, scope, horizon, seed, tag):
+    return (config.PROCESSED / "gp_cache" / f"{version}_split{config.SPLIT}_{tag}"
+            / f"{scope}_{horizon}_{seed}.pkl")
+
+
+def _task(panel, version, scope, horizon, seed, settings, grid, tag):
     """One (scope, horizon, seed) run, cached on disk so an interrupted run resumes."""
-    path = _cache_path(version, scope, horizon, seed)
+    path = _cache_path(version, scope, horizon, seed, tag)
     if path.exists():
         return pd.read_pickle(path)
-    preds, info = fit_predict(panel, seed, version, horizon, None if scope == "POOLED" else scope)
+    preds, info = fit_predict(panel, seed, version, horizon, None if scope == "POOLED" else scope,
+                              settings, grid)
     res = (scope, preds, {"ticker": scope, "horizon": horizon, "seed": seed, **score(preds), **info})
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.to_pickle(res, path)
     return res
 
 
-SCOPE_SUFFIX = {"all": "", "pooled": "_pooled", "ticker": "_per_ticker"}
+def output_names(version: str, scope: str) -> dict[str, str]:
+    """File names (relative to the output folder) for one run."""
+    stem = f"gp_{version}_per_ticker" if scope == "tickers" else f"gp_{version}"
+    names = {"summary": f"{stem}.csv", "seeds": f"{stem}_seeds.csv"}
+    if scope in ("all", "pooled"):
+        names["pooled_preds"] = f"preds/gp_{version}.csv"
+    if scope == "all":
+        names["ticker_preds"] = f"preds/gp_{version}_ticker.csv"
+    if scope == "tickers":
+        names["ticker_preds"] = f"preds/{stem}.csv"
+    return names
 
 
-def run(version: str, jobs: int, fresh: bool = False, scope: str = "all") -> None:
+def run(version: str, jobs: int, fresh: bool = False, scope: str = "all", quick: bool = False) -> None:
+    settings, grid = dict(config.GP), list(PARSIMONY_GRID)
+    seeds_list, horizons = list(config.SEEDS), list(config.HORIZONS)
+    out_dir = config.RESULTS
+    if quick:
+        settings.update(QUICK)
+        grid, seeds_list, horizons = grid[:1], seeds_list[:1], ["1d"]
+        out_dir = config.PROCESSED / "gp_quick"
+    tag = settings_tag(settings, grid) + ("_quick" if quick else "")
+
     panel = load_panel(with_features=(version != "v0"))
     scopes = {"all": ["POOLED"] + list(config.TICKERS), "pooled": ["POOLED"],
-              "ticker": list(config.TICKERS)}[scope]
-    name = f"gp_{version}{SCOPE_SUFFIX[scope]}"
-    tasks = [(s, h, seed) for h in config.HORIZONS for s in scopes for seed in config.SEEDS]
+              "tickers": list(config.TICKERS)}[scope]
+    tasks = [(s, h, seed) for h in horizons for s in scopes for seed in seeds_list]
     if fresh:
         for s, h, seed in tasks:
-            _cache_path(version, s, h, seed).unlink(missing_ok=True)
-    print(f"GP {version} (scope {scope}): split {config.SPLIT}, {len(tasks)} runs x {len(PARSIMONY_GRID) + 1} fits, jobs={jobs}")
+            _cache_path(version, s, h, seed, tag).unlink(missing_ok=True)
+    print(f"GP {version} scope={scope}{' QUICK' if quick else ''}: split {config.SPLIT}, "
+          f"{len(tasks)} runs x {len(grid) + 1} fits, population {settings['population_size']}, "
+          f"generations {settings['generations']}, jobs={jobs}, cache tag {tag}")
     # stdlib process pool (joblib/loky fails when the temp path has non-ASCII characters).
     # If a worker dies (sleep, memory), restart the pool; finished runs come from the cache.
     for attempt in range(3):
         try:
             with ProcessPoolExecutor(max_workers=jobs) as ex:
-                futures = [ex.submit(_task, panel, version, s, h, seed) for s, h, seed in tasks]
+                futures = [ex.submit(_task, panel, version, s, h, seed, settings, grid, tag)
+                           for s, h, seed in tasks]
                 out = []
                 for i, f in enumerate(futures, 1):
                     out.append(f.result())
@@ -204,8 +242,6 @@ def run(version: str, jobs: int, fresh: bool = False, scope: str = "all") -> Non
     seeds = pd.DataFrame([row for _, _, row in out])
     cols_in = inputs_for(version)
     seeds["formula"] = [to_formula(p, cols_in, n) for p, n in zip(seeds["program"], seeds["length"])]
-    pooled_preds = [p for s, p, _ in out if s == "POOLED"]
-    ticker_preds = [p for s, p, _ in out if s != "POOLED"]
 
     g = seeds.groupby(["ticker", "horizon"], sort=False)
     summary = g[["r2_oos", "rmse_oos", "hit_rate", "length"]].median().rename(columns={"length": "complexity"})
@@ -216,35 +252,39 @@ def run(version: str, jobs: int, fresh: bool = False, scope: str = "all") -> Non
     summary.insert(1, "tstat", np.nan)
     summary = summary.reset_index()
 
-    (config.RESULTS / "preds").mkdir(parents=True, exist_ok=True)
-    summary.to_csv(config.RESULTS / f"{name}.csv", index=False)
-    seeds.to_csv(config.RESULTS / f"{name}_seeds.csv", index=False)
-    if pooled_preds:
-        pd.concat(pooled_preds, ignore_index=True).to_csv(config.RESULTS / "preds" / f"{name}.csv", index=False)
-    if ticker_preds:
-        tname = name if scope == "ticker" else f"{name}_ticker"
-        pd.concat(ticker_preds, ignore_index=True).to_csv(config.RESULTS / "preds" / f"{tname}.csv", index=False)
-    save_formulas(seeds, version)
+    names = output_names(version, scope)
+    (out_dir / "preds").mkdir(parents=True, exist_ok=True)
+    summary.to_csv(out_dir / names["summary"], index=False)
+    seeds.to_csv(out_dir / names["seeds"], index=False)
+    if "pooled_preds" in names:
+        pd.concat([p for s, p, _ in out if s == "POOLED"], ignore_index=True).to_csv(
+            out_dir / names["pooled_preds"], index=False)
+    if "ticker_preds" in names:
+        pd.concat([p for s, p, _ in out if s != "POOLED"], ignore_index=True).to_csv(
+            out_dir / names["ticker_preds"], index=False)
+    save_formulas(seeds, version, out_dir)
 
     cols = ["ticker", "horizon", "r2_oos", "r2_oos_min", "r2_oos_max", "rmse_oos", "hit_rate", "complexity", "parsimony_mode"]
     with pd.option_context("display.width", 200, "display.float_format", "{:.4f}".format):
         print(summary[cols].sort_values(["horizon", "ticker"]).to_string(index=False))
-        pooled = seeds[seeds["ticker"] == "POOLED"][["horizon", "seed", "r2_oos", "parsimony", "length", "formula"]]
-        if len(pooled):
-            print("\nPooled formulas by seed:")
-            print(pooled.to_string(index=False))
+        shown = seeds[seeds["ticker"] == "POOLED"] if scope != "tickers" else seeds[seeds["horizon"] == horizons[0]]
+        print(f"\n{'Pooled' if scope != 'tickers' else 'Per-ticker'} formulas by seed:")
+        print(shown[["ticker", "horizon", "seed", "r2_oos", "parsimony", "length", "formula"]].to_string(index=False))
+    print(f"\nwrote {', '.join(names.values())} and gp_formulas.csv to {out_dir}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", choices=["v0", "v1"], default="v0")
+    ap.add_argument("--scope", choices=SCOPES, default="all",
+                    help="all = pooled + per-ticker; pooled / tickers split the work across machines")
     ap.add_argument("--jobs", type=int, default=max(1, min(8, (os.cpu_count() or 2) - 1)),
                     help="parallel runs (default: up to 8)")
     ap.add_argument("--fresh", action="store_true", help="ignore cached runs in data/processed/gp_cache")
-    ap.add_argument("--scope", choices=list(SCOPE_SUFFIX), default="all",
-                    help="all = POOLED + every ticker; pooled / ticker split the run across machines")
+    ap.add_argument("--quick", action="store_true",
+                    help="smoke test: tiny GP, 1 seed, 1d, output to data/processed/gp_quick/")
     args = ap.parse_args()
-    run(args.version, args.jobs, args.fresh, args.scope)
+    run(args.version, args.jobs, args.fresh, args.scope, args.quick)
 
 
 if __name__ == "__main__":

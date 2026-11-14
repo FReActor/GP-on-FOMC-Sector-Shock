@@ -199,6 +199,186 @@ v0,XLY,5d,6,0.01,1,-0.05000
 v0,XLY,5d,7,0.0005,36,"(-0.354*surprise_bp**2*Max(0.02057, surprise_bp*(0.02505 - 0.09416*Min(0.266, 0.1487*Abs(surprise_bp)))) + 0.7514)/surprise_bp"
 v0,XLY,5d,8,0.0005,30,"Min(0.717/surprise_bp, 0.728/surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(surprise_bp, surprise_bp*Min(0.717/surprise_bp, Max(-0.431/surprise_bp, surprise_bp)))))"
 v0,XLY,5d,9,0.005,3,0.978/surprise_bp
+v1,XLB,1d,0,0.001,17,"-vix*Min(0.251, mom_20d)*Min(beta_1y, -vix*Min(0.251, mom_20d))"
+v1,XLB,1d,1,0.001,12,0.2745*Abs(mom_20d*vix)
+v1,XLB,1d,2,0.0005,9,0.06*Abs(vix**3)
+v1,XLB,1d,3,0.0005,32,"Abs(Max(-0.071*mom_20d*vix**2, mom_20d*Min(-0.071, vix), -0.071*vix*Min(vix, Max(beta_1y, mom_20d))))"
+v1,XLB,1d,4,0.0005,12,-0.102/Abs(surprise_bp**4)
+v1,XLB,1d,5,0.0005,88,"Max(-0.132/surprise_bp, -2.0*mom_20d - mom_20d/surprise_bp - Max(0.015, mom_20d - Max(-0.132/surprise_bp, -mom_20d - Abs(beta_1y + Abs(beta_1y) - 0.0930000000000001) - Max(-0.015/surprise_bp, beta_1y - 0.907 - 0.132/surprise_bp) - 2.835)) - 2.82)"
+v1,XLB,1d,6,0.001,4,0.05/surprise_bp
+v1,XLB,1d,7,0.0005,30,"-Max(0.09848*vix**4, -0.013/(surprise_bp - 1.0), -0.013/(vix - 1.0))/surprise_bp"
+v1,XLB,1d,8,0.0005,7,(0.127 - slope_2s10s)/surprise_bp
+v1,XLB,1d,9,0.001,42,"Abs(mom_20d*Max(-0.118, -0.069*mom_20d*Max(vix, mom_20d*Max(mom_20d, vix)/Max(vix, -0.069*Max(mom_20d, vix), -0.000328509*Max(mom_20d, vix)))))"
+v1,XLE,1d,0,0.01,1,0.02700
+v1,XLE,1d,1,0.001,10,-0.12/(surprise_bp**2*Abs(surprise_bp))
+v1,XLE,1d,2,0.001,13,-0.091/Abs(surprise_bp**2*Abs(surprise_bp))
+v1,XLE,1d,3,0.005,1,-0.07100
+v1,XLE,1d,4,0.001,21,0.03614/surprise_bp**7
+v1,XLE,1d,5,0.005,5,"-0.051/Max(mom_20d, vix)"
+v1,XLE,1d,6,0.01,1,0.01900
+v1,XLE,1d,7,0.0005,49,0
+v1,XLE,1d,8,0.0005,38,"-vix*Min(0.362, Abs(mom_20d) + 0.000909*Abs(surprise_bp)/surprise_bp, Abs(vix + 0.362))/surprise_bp"
+v1,XLE,1d,9,0.01,1,-0.03700
+v1,XLF,1d,0,0.005,1,0.1140
+v1,XLF,1d,1,0.005,1,0.1200
+v1,XLF,1d,2,0.005,2,0.1280
+v1,XLF,1d,3,0.005,2,0.07100
+v1,XLF,1d,4,0.005,1,0.09400
+v1,XLF,1d,5,0.005,1,0.1420
+v1,XLF,1d,6,0.005,1,0.1810
+v1,XLF,1d,7,0.01,1,0.1320
+v1,XLF,1d,8,0.01,1,0.09100
+v1,XLF,1d,9,0.005,1,0.1350
+v1,XLI,1d,0,0.005,1,-0.03600
+v1,XLI,1d,1,0.001,6,0.327*Abs(mom_20d) - 0.275
+v1,XLI,1d,2,0.005,1,-0.03500
+v1,XLI,1d,3,0.005,1,-0.04400
+v1,XLI,1d,4,0.005,1,-0.004000
+v1,XLI,1d,5,0.005,1,-0.05700
+v1,XLI,1d,6,0.001,1,-0.01600
+v1,XLI,1d,7,0.0005,3,0.012/mom_20d
+v1,XLI,1d,8,0.0005,5,0.091*mom_20d**2
+v1,XLI,1d,9,0.001,1,-0.02300
+v1,XLK,1d,0,0.0005,39,"0.203*vix*Min(0.203*vix*Min(0.02903*vix*Abs(slope_2s10s)**2*Max(mom_20d, surprise_bp), Max(mom_20d, surprise_bp)), Max(mom_20d, Min(surprise_bp, Abs(slope_2s10s))))"
+v1,XLK,1d,1,0.001,2,0.1200
+v1,XLK,1d,2,0.001,2,0.09100
+v1,XLK,1d,3,0.0005,2,0.1140
+v1,XLK,1d,4,0.001,1,0.09400
+v1,XLK,1d,5,0.0005,6,0.142*slope_2s10s**2
+v1,XLK,1d,6,0.005,1,0.1110
+v1,XLK,1d,7,0.0005,11,0.126*Abs(slope_2s10s**2*Abs(slope_2s10s))
+v1,XLK,1d,8,0.0005,2,0.1270
+v1,XLK,1d,9,0.001,2,0.1350
+v1,XLP,1d,0,0.001,2,-0.3000
+v1,XLP,1d,1,0.01,1,-0.2330
+v1,XLP,1d,2,0.0005,38,-0.236*vix - 0.3197
+v1,XLP,1d,3,0.005,1,-0.3300
+v1,XLP,1d,4,0.001,1,-0.2420
+v1,XLP,1d,5,0.01,1,-0.2730
+v1,XLP,1d,6,0.0005,1,-0.2830
+v1,XLP,1d,7,0.001,3,-0.2520
+v1,XLP,1d,8,0.0005,32,"Max(beta_1y, Min(-Max(0.225, vix), -Max(vix, Abs(Max(-0.225, vix)))))"
+v1,XLP,1d,9,0.001,2,-0.2260
+v1,XLU,1d,0,0.005,3,"Max(-0.225, beta_1y)"
+v1,XLU,1d,1,0.005,5,-0.546*vix - 0.397
+v1,XLU,1d,2,0.005,8,-0.55*vix - 0.515
+v1,XLU,1d,3,0.0005,48,"Min(0.29*beta_1y - 0.29*vix, Max(mom_20d - vix, Min(-0.856, -beta_1y + vix)))"
+v1,XLU,1d,4,0.0005,84,"Max(-0.608*vix - 0.608*Abs(beta_1y), Min(-0.387, -0.608*vix, Min(-0.247, 0.608*vix, Min(-0.387, -0.608*Min(-0.608*vix, Abs(beta_1y)))/vix)/vix, Min(-0.247, -0.608/vix, -0.608*vix, Max(mom_20d, -0.608*vix - 0.002432))/vix))"
+v1,XLU,1d,5,0.01,1,-0.2850
+v1,XLU,1d,6,0.01,1,-0.3140
+v1,XLU,1d,7,0.001,24,"Min(0.723*Min(mom_20d, slope_2s10s - vix), 0.5227*Min(slope_2s10s - vix, -Min(mom_20d, -mom_20d + slope_2s10s - vix)))"
+v1,XLU,1d,8,0.001,55,"Max(-0.379*vix - Min(0.506, Abs(vix + 0.379*Abs(vix) + Abs(Min(mom_20d, slope_2s10s)))), -Max(0.379, 0.379*vix, Min(vix + Abs(Min(mom_20d, slope_2s10s)), Abs(0.256036*vix + 0.762036))))"
+v1,XLU,1d,9,0.005,5,-0.493*vix - 0.401
+v1,XLV,1d,0,0.001,3,0.016*surprise_bp
+v1,XLV,1d,1,0.01,1,-0.03900
+v1,XLV,1d,2,0.01,1,-0.03500
+v1,XLV,1d,3,0.0005,15,-0.29*vix**2/(surprise_bp**3*(surprise_bp - vix))
+v1,XLV,1d,4,0.001,9,beta_1y*vix**2/surprise_bp**2
+v1,XLV,1d,5,0.0005,29,"beta_1y*Min(slope_2s10s, beta_1y**2*vix**3/surprise_bp**5)/surprise_bp"
+v1,XLV,1d,6,0.005,1,-0.05000
+v1,XLV,1d,7,0.005,1,-0.003000
+v1,XLV,1d,8,0.01,1,0.009000
+v1,XLV,1d,9,0.005,1,-0.03100
+v1,XLY,1d,0,0.005,1,0.02900
+v1,XLY,1d,1,0.01,1,-0.03900
+v1,XLY,1d,2,0.001,1,0.02700
+v1,XLY,1d,3,0.0005,16,"0.071*Max(0.005041*vix**2, vix**2)"
+v1,XLY,1d,4,0.005,1,0.02900
+v1,XLY,1d,5,0.005,1,0.05400
+v1,XLY,1d,6,0.005,3,-0.283*mom_20d
+v1,XLY,1d,7,0.001,5,0.05153*vix
+v1,XLY,1d,8,0.001,5,0.091*vix**2
+v1,XLY,1d,9,0.005,1,0.02200
+v1,XLB,5d,0,0.01,3,beta_1y + vix
+v1,XLB,5d,1,0.01,3,beta_1y + vix
+v1,XLB,5d,2,0.005,3,beta_1y + vix
+v1,XLB,5d,3,0.0005,72,"Min(-beta_1y*mom_20d*vix + beta_1y, -Min(mom_20d, Min(mom_20d, beta_1y*mom_20d**2*vix)*Min(mom_20d, beta_1y + vix, vix + Min(beta_1y, mom_20d, beta_1y*mom_20d*Min(0.616*beta_1y*(beta_1y + vix)/Min(beta_1y**2*mom_20d, beta_1y + vix), beta_1y + vix)))))"
+v1,XLB,5d,4,0.005,11,"mom_20d/Max(mom_20d*surprise_bp, beta_1y + slope_2s10s + surprise_bp)"
+v1,XLB,5d,5,0.01,3,beta_1y + vix
+v1,XLB,5d,6,0.01,6,beta_1y*vix*Abs(mom_20d)
+v1,XLB,5d,7,0.005,35,"Min(beta_1y*vix**4*Abs(mom_20d), beta_1y + vix**2*Min(beta_1y*vix*(vix + 1.0), Abs(mom_20d)), Abs(mom_20d))"
+v1,XLB,5d,8,0.01,3,beta_1y + vix
+v1,XLB,5d,9,0.01,3,"Min(0.107, beta_1y)"
+v1,XLE,5d,0,0.01,3,-0.072*surprise_bp
+v1,XLE,5d,1,0.005,3,mom_20d/surprise_bp
+v1,XLE,5d,2,0.0005,34,"Min(-mom_20d*Min(beta_1y, mom_20d)/surprise_bp, Abs(Min(mom_20d, mom_20d/surprise_bp, -mom_20d*Min(beta_1y, mom_20d)/surprise_bp)))"
+v1,XLE,5d,3,0.01,1,-0.07100
+v1,XLE,5d,4,0.01,4,-beta_1y/surprise_bp
+v1,XLE,5d,5,0.01,4,-beta_1y/surprise_bp
+v1,XLE,5d,6,0.0005,23,"Min(surprise_bp**2, mom_20d/surprise_bp, surprise_bp*Min(mom_20d/surprise_bp**2, mom_20d/surprise_bp))"
+v1,XLE,5d,7,0.01,4,-beta_1y/surprise_bp
+v1,XLE,5d,8,0.01,3,mom_20d/surprise_bp
+v1,XLE,5d,9,0.01,3,mom_20d/surprise_bp
+v1,XLF,5d,0,0.005,14,"Min(beta_1y*Min(beta_1y*slope_2s10s, Abs(vix)), 2.0*beta_1y - 0.841)"
+v1,XLF,5d,1,0.005,20,"beta_1y*Min(Abs(mom_20d)/slope_2s10s, Min(beta_1y, vix*Abs(mom_20d)*Min(beta_1y, Abs(mom_20d)))/slope_2s10s)"
+v1,XLF,5d,2,0.005,6,Abs(beta_1y*vix) - 0.59
+v1,XLF,5d,3,0.005,14,"Abs(beta_1y*Min(vix, beta_1y*Min(beta_1y, vix))) - 0.597"
+v1,XLF,5d,4,0.005,10,0.344*Abs(beta_1y**2*vix) - 0.473
+v1,XLF,5d,5,0.001,61,"beta_1y*Min(Abs(mom_20d)*Min(beta_1y*Min(beta_1y*slope_2s10s, Abs(vix*Min(mom_20d, Abs(mom_20d)))), vix*Abs(mom_20d)), Abs(mom_20d), Abs(Min(beta_1y*slope_2s10s, Abs(vix*Abs(mom_20d)), Abs(Min(vix*Abs(mom_20d), Abs(mom_20d))))))"
+v1,XLF,5d,6,0.001,42,"Max(0.747, beta_1y)*Min(beta_1y**2*slope_2s10s, vix*Min(beta_1y, Abs(mom_20d)**2*Min(beta_1y, vix + 0.998)), beta_1y*slope_2s10s*Min(Abs(mom_20d), Max(0.747, beta_1y)), beta_1y - 0.462)"
+v1,XLF,5d,7,0.005,13,Abs(beta_1y*vix) - 0.723
+v1,XLF,5d,8,0.005,10,"beta_1y*Min(beta_1y, vix*Abs(mom_20d - 0.351))"
+v1,XLF,5d,9,0.0005,82,"Max(-0.472, beta_1y*Min(beta_1y, vix*Max(-0.472, beta_1y*Min(beta_1y*Max(-0.472, mom_20d**2 + Max(-0.472, beta_1y*Min(beta_1y*Min(beta_1y, Abs(beta_1y), Max(-0.472, Abs(mom_20d) + Min(-0.401, beta_1y, vix*Max(-0.472, beta_1y*Min(beta_1y, Abs(mom_20d) - 0.401) - 0.401)))), Abs(mom_20d) - 0.401) - 0.401)), Abs(mom_20d) - 0.401) - 0.401)) + Min(-0.401, beta_1y))"
+v1,XLI,5d,0,0.01,1,-0.07200
+v1,XLI,5d,1,0.005,1,-0.07700
+v1,XLI,5d,2,0.005,1,-0.03500
+v1,XLI,5d,3,0.001,23,"-vix*Abs(Max(mom_20d, vix)*Max(slope_2s10s, -0.071*vix**2*Max(mom_20d, vix)/surprise_bp))/surprise_bp"
+v1,XLI,5d,4,0.0005,29,"beta_1y*Min(mom_20d, -slope_2s10s - 0.226)"
+v1,XLI,5d,5,0.005,1,-0.05100
+v1,XLI,5d,6,0.005,1,-0.01600
+v1,XLI,5d,7,0.001,2,0.003000
+v1,XLI,5d,8,0.01,1,-0.1270
+v1,XLI,5d,9,0.005,1,-0.06900
+v1,XLK,5d,0,0.01,1,0.1140
+v1,XLK,5d,1,0.005,1,0.2750
+v1,XLK,5d,2,0.005,1,0.1960
+v1,XLK,5d,3,0.005,7,-beta_1y/surprise_bp + 0.325
+v1,XLK,5d,4,0.0005,19,"-Max(beta_1y, -Max(beta_1y, beta_1y/surprise_bp)/surprise_bp)/surprise_bp"
+v1,XLK,5d,5,0.001,22,"Max(-0.232 - Max(0.232, beta_1y/surprise_bp)/surprise_bp, -beta_1y/surprise_bp + Max(0.232, -beta_1y/surprise_bp))"
+v1,XLK,5d,6,0.0005,62,"-Min(beta_1y/surprise_bp, Abs(beta_1y/surprise_bp))"
+v1,XLK,5d,7,0.005,4,-beta_1y/surprise_bp
+v1,XLK,5d,8,0.01,1,0.09100
+v1,XLK,5d,9,0.005,1,0.2770
+v1,XLP,5d,0,0.01,1,mom_20d
+v1,XLP,5d,1,0.001,26,"Min(-0.546*vix, Min(0.604, vix)*Min(beta_1y, vix), -beta_1y + slope_2s10s, Abs(mom_20d))"
+v1,XLP,5d,2,0.005,11,"Min(-vix, mom_20d*Min(mom_20d**2, -vix))"
+v1,XLP,5d,3,0.005,7,"Abs(mom_20d) - Max(0.138, vix)"
+v1,XLP,5d,4,0.0005,85,"Abs(2*Abs(mom_20d) + Min(-vix, Max(vix, Min(0.102, Abs(vix - Min(-vix, Max(mom_20d, Min(-vix + Abs(mom_20d) - 0.473, Abs(mom_20d)) - 0.473, -vix + Abs(mom_20d) - 0.473)) + 0.473)))) - 0.473) + Min(-vix + Abs(mom_20d) - 0.473, Abs(mom_20d)) - 0.473"
+v1,XLP,5d,5,0.01,1,mom_20d
+v1,XLP,5d,6,0.005,7,beta_1y*slope_2s10s*(mom_20d + vix)
+v1,XLP,5d,7,0.0005,45,"Min(Max(mom_20d, vix) + Max(mom_20d, slope_2s10s, vix), mom_20d*Max(-0.188, mom_20d) - vix + Max(-0.188, mom_20d)*Min(-2.0*vix + Max(-0.188, mom_20d)/surprise_bp, Max(-0.188, mom_20d)) - Min(beta_1y, mom_20d)/surprise_bp**5)"
+v1,XLP,5d,8,0.001,53,"Max(Min(mom_20d, -slope_2s10s + surprise_bp*vix*Max(-0.06, mom_20d)), Min(-vix, Max(-0.06, mom_20d)))"
+v1,XLP,5d,9,0.01,1,mom_20d
+v1,XLU,5d,0,0.01,3,"Min(0.114, mom_20d)"
+v1,XLU,5d,1,0.0005,106,"Max(Min(mom_20d, -0.608*mom_20d**3*slope_2s10s), Min(Abs(surprise_bp)*Min(beta_1y*slope_2s10s, -mom_20d + Max(Min(Abs(surprise_bp)*Min(mom_20d, -0.616*vix, -0.608*mom_20d**3*slope_2s10s), -beta_1y*slope_2s10s + mom_20d + Min(mom_20d, Max(vix/slope_2s10s, Min(beta_1y, -0.233*vix)))), Min(-0.233*vix, 0.05429*vix, beta_1y*slope_2s10s, Abs(surprise_bp)*Max(-0.067, Min(-0.616*vix, -0.067*vix))))), beta_1y*slope_2s10s - Min(mom_20d, -0.233*vix)))"
+v1,XLU,5d,2,0.01,3,-0.323*vix
+v1,XLU,5d,3,0.01,3,-0.382*vix
+v1,XLU,5d,4,0.0005,33,"Max(Min(mom_20d, Max(beta_1y, -vix)), Min(-vix, beta_1y*vix))"
+v1,XLU,5d,5,0.001,47,"Max(beta_1y*vix, Min(mom_20d, -0.579*vix))"
+v1,XLU,5d,6,0.0005,53,"Min(mom_20d, Min(mom_20d, mom_20d*Min(mom_20d, -mom_20d*slope_2s10s), mom_20d - Min(slope_2s10s, Min(mom_20d, -Min(mom_20d, mom_20d*Min(mom_20d, -mom_20d*slope_2s10s), mom_20d - Min(slope_2s10s, Min(mom_20d, vix, mom_20d*Min(mom_20d, -mom_20d*slope_2s10s))/vix)))/vix)) + 0.317)"
+v1,XLU,5d,7,0.01,1,-0.2520
+v1,XLU,5d,8,0.001,38,"Max(-2.105*beta_1y**2, Min(-0.256/vix, Max(-slope_2s10s, Min(mom_20d, slope_2s10s, mom_20d*Abs(Min(mom_20d, mom_20d/surprise_bp))))))"
+v1,XLU,5d,9,0.0005,71,"Min(-Abs(Min(0.536, mom_20d, -mom_20d*slope_2s10s*Max(-mom_20d*slope_2s10s*Min(slope_2s10s, Abs(surprise_bp)), beta_1y + mom_20d)))*Min(slope_2s10s, Abs(mom_20d)), Abs(Abs(Min(mom_20d, Abs(mom_20d)))*Min(slope_2s10s, Abs(Max(Min(0.536, -Abs(Min(mom_20d*slope_2s10s, Abs(mom_20d)))*Min(mom_20d, slope_2s10s)), Min(mom_20d, Abs(mom_20d)))))))"
+v1,XLV,5d,0,0.005,3,"Min(-0.143, mom_20d)"
+v1,XLV,5d,1,0.005,9,"Min(-0.144, 0.129*slope_2s10s*surprise_bp)"
+v1,XLV,5d,2,0.005,5,"Min(-0.064, mom_20d)"
+v1,XLV,5d,3,0.005,3,"Min(-0.071, mom_20d)"
+v1,XLV,5d,4,0.001,70,"Min(-beta_1y, mom_20d*slope_2s10s, mom_20d*slope_2s10s**2, slope_2s10s*Min(0.094*vix, mom_20d*slope_2s10s, Max(-0.247, mom_20d)), slope_2s10s*Min(slope_2s10s*Min(mom_20d*slope_2s10s, vix/surprise_bp), slope_2s10s*Min(slope_2s10s, 0.094*surprise_bp, mom_20d*slope_2s10s), vix/surprise_bp, slope_2s10s*vix**2/surprise_bp), vix/surprise_bp)"
+v1,XLV,5d,5,0.0005,24,"Min(0.081*surprise_bp, Max(beta_1y - surprise_bp*Max(0, Min(mom_20d, vix)), Min(mom_20d, vix)))"
+v1,XLV,5d,6,0.001,58,"Min(0.05, mom_20d*slope_2s10s, slope_2s10s**2*Min(mom_20d, mom_20d*slope_2s10s**2, (0.019 - mom_20d)*Max(beta_1y, vix), (-mom_20d + Min(0.05, mom_20d*slope_2s10s))*Abs(mom_20d*Min(mom_20d, Max(beta_1y, vix))), Max(beta_1y, vix)), Max(beta_1y, vix))"
+v1,XLV,5d,7,0.01,3,"Min(-0.201, mom_20d)"
+v1,XLV,5d,8,0.005,7,"Min(-0.138, mom_20d*slope_2s10s)"
+v1,XLV,5d,9,0.005,3,"Min(-0.108, mom_20d)"
+v1,XLY,5d,0,0.001,3,beta_1y*mom_20d
+v1,XLY,5d,1,0.005,3,beta_1y*mom_20d
+v1,XLY,5d,2,0.005,4,0.72/surprise_bp
+v1,XLY,5d,3,0.0005,3,beta_1y*mom_20d
+v1,XLY,5d,4,0.001,4,0.687/surprise_bp
+v1,XLY,5d,5,0.001,21,beta_1y*mom_20d - Abs(beta_1y)/(beta_1y + 0.292*slope_2s10s - surprise_bp) - Abs(beta_1y)/(slope_2s10s - surprise_bp)
+v1,XLY,5d,6,0.001,3,beta_1y*mom_20d
+v1,XLY,5d,7,0.001,3,beta_1y*mom_20d
+v1,XLY,5d,8,0.01,1,-0.1210
+v1,XLY,5d,9,0.001,55,"(-0.036*surprise_bp*(slope_2s10s - surprise_bp)*Max(0.036*surprise_bp*(2.0*beta_1y - slope_2s10s), beta_1y - mom_20d + slope_2s10s + 0.036*surprise_bp*(0.964*mom_20d - 2.0*slope_2s10s + 0.036*Abs(beta_1y) + 0.036*Abs(slope_2s10s) - 0.135)) - Abs(beta_1y))/(slope_2s10s - surprise_bp)"
 v1,POOLED,1d,0,0.0005,1,-0.07200
 v1,POOLED,1d,1,0.001,3,0.162*beta_1y
 v1,POOLED,1d,2,0.001,1,-0.03500
