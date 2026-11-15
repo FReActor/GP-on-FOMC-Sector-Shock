@@ -62,10 +62,53 @@ with and without that event. Full details: `results/data_report.md`.
 *(Person 2)*
 
 ## 4. GP model
-*(Person 1)*
+
+We use gplearn's `SymbolicRegressor` (`src/models/gp.py`). Each run starts from 1,000 random
+formulas (depth 2-4) built from `add sub mul div max min abs neg` and constants in [-1, 1], and
+evolves them for 40 generations with tournament selection (size 20) on 90% subsamples. The target is
+the excess return in percent. Two versions: **v0** uses `surprise_bp` only; **v1** adds the four day −1
+features, standardized with train-period mean and sd. Two scopes: one **pooled** model over all nine
+sectors (the main result) and one model **per sector** (~93 training events each).
+
+Overfitting control: the parsimony coefficient (length penalty) is chosen from
+{0.0005, 0.001, 0.005, 0.01} by fitting on 1999-2006 and scoring MSE on the 2007-2009 validation
+years; the model is then refit on all of 1999-2009 with that value. Each configuration is run with
+10 seeds and we report the median test score, so no result depends on a lucky seed. Final formulas
+are simplified with sympy (`results/gp_formulas.csv`). All settings are in `config.GP` so the pooled
+(Charles) and per-sector (Abhi) runs are identical.
 
 ## 5. Results and robustness
-*(Person 1)*
+
+Full table: `results/summary.csv`; figures: `results/figures/` (`python -m src.plots`); slide text:
+`docs/slides_results.md`.
+
+**Pooled (main result).** Test r2_oos at 1 day: zero forecast +0.080, GP v0 +0.080, linear +0.076,
+GP v1 +0.074, linear with features +0.056. At 5 days every model is within 0.01 of zero. The
+go/no-go rule fixed in advance (GP v1 must beat both linear models, with ≥ 6 of 10 seeds above
+linear) gives **NO-GO**: only 1 of 10 seeds beats linear (`results/go_no_go.md`). All 20 pooled
+GP v0 seed-runs return a constant formula.
+
+**Per sector.** GP v1 beats the zero forecast in 4 of 18 (sector, horizon) cells and its median gap
+to zero is negative at both horizons (−0.04 at 1d, −0.07 at 5d); it fails badly on XLB. Linear beats
+zero in 5 of 18, linear with features in 3 of 18.
+
+**Overfitting.** Of the 167 per-sector GP seed-runs whose formula uses any input, 76% have negative
+test r2_oos, including runs with in-sample r2 of 0.3-0.55 (`results/gp_overfit.csv`). The XLE 1d
+formula `Min(0.022/s², 0.0121/s)` is ~0 for every s ≠ 0 and −1% at s = 0 through gplearn's
+protected division; it fits 3 training days and scores −0.41 on the 8 test days with s = 0.
+
+**The zero-forecast artifact.** r2_oos is measured against each sector's 1999-2009 mean. Those means
+were large (XLU −49 bp, XLP −43 bp, XLF +32 bp) and shrank in 2010-2015, so predicting 0 already
+gives +0.08 pooled and up to +0.25 for one sector. We therefore judge every model against the zero
+forecast, not against 0.
+
+**Features (Track C).** GP v1 does use the features (at 5 days, `mom_20d` and `beta_1y` appear in
+over half of the formulas, `results/gp_interpretation.md`), but test performance does not improve,
+and linear with features is worse than plain linear. We keep Track C as a negative result.
+
+**Robustness not run in Stage 1.** The planned flags (`TARGET`, `SCHEDULED_ONLY`, `DROP_EVENTS`,
+`docs/robustness_flags.md`) were not merged before the freeze. Stage 2 (branch `stage2-v1`) runs
+its own placebo and unscheduled-event checks on the new data.
 
 ## 6. Limitations and Stage 2
 *(leads)*
