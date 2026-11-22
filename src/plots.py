@@ -74,7 +74,7 @@ def fig1_pooled(summary):
             ha="right", va="bottom", fontsize=12, color=INK, fontweight="bold")
     ax.axhline(0, color=INK2, linewidth=1)
     ax.set_xticks(x, [SHORT[m] for m in models], fontsize=12)
-    ax.set_ylabel("test R²_OOS, 1-day (2010-2015)")
+    ax.set_ylabel("R² on test years 2010–2015 (1-day)")
     ax.grid(axis="x", visible=False)
     ax.set_ylim(0, 0.1)
     ax.set_xlim(-0.5, len(models) - 0.5)
@@ -101,7 +101,7 @@ def fig2_heatmap(summary):
                      loc="left", fontsize=12, color=INK)
         ax.grid(False)
     cb = fig.colorbar(im, ax=axes, shrink=0.85, pad=0.02)
-    cb.set_label("r2_oos minus zero forecast (blue = better)")
+    cb.set_label("R² minus zero forecast (blue = better)")
     fig.suptitle("Per sector: most cells are worse than predicting 0", x=0.06, ha="left",
                  fontsize=14, color=INK)
     save(fig, "fig2_vs_zero_heatmap.png")
@@ -140,8 +140,8 @@ def fig3_overfit():
     ax.text(lim * 0.70, lim * 0.62, "test = train", color=INK2, fontsize=9, rotation=0)
     ax.axhline(0, color=INK2, linewidth=1)
     share = (d["r2_test"] < 0).mean()
-    ax.set_xlabel("r2 on training years (1999-2009)")
-    ax.set_ylabel("r2_oos on test years (2010-2015), clipped at -1")
+    ax.set_xlabel("R² on training years (1999–2009)")
+    ax.set_ylabel("R² on test years (2010–2015), clipped at −1")
     ax.set_title(f"GP formulas fit the past, not the future\n{share:.0%} of non-constant runs score below 0 on test",
                  loc="left", fontsize=13, color=INK)
     ax.legend(loc="lower right", fontsize=9.5)
@@ -173,7 +173,7 @@ def fig4_xle():
     ax.set_xlabel("Fed surprise s (2y yield change, bp)")
     ax.set_ylabel("XLE 1-day excess return (%)")
     ax.set_title(f"What GP 'learned' for energy: ~0 everywhere, -1% when s = 0\n"
-                 f"fit on {n0.get('train', 0)} train events with s = 0, scored on {n0.get('test', 0)} test ones; test r2_oos = -0.41",
+                 f"fit on {n0.get('train', 0)} train events with s = 0, scored on {n0.get('test', 0)} test ones; test R² = −0.41",
                  loc="left", fontsize=13, color=INK)
     ax.legend(fontsize=9.5, loc="lower left")
     save(fig, "fig4_xle_formula.png")
@@ -192,7 +192,7 @@ def fig5_zero_artifact():
     ax.axhline(0, color=INK2, linewidth=1)
     ax.set_xticks(x, config.TICKERS)
     ax.set_ylabel("mean 1-day excess return on FOMC days (bp)")
-    ax.set_title("Why 'predict 0' scores r2_oos > 0: the train-period means don't carry over",
+    ax.set_title("Why 'predict 0' scores R² > 0: the train-period means don't carry over",
                  loc="left", fontsize=13, color=INK)
     ax.grid(axis="x", visible=False)
     ax.legend(fontsize=9.5)
