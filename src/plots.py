@@ -183,19 +183,26 @@ def fig5_zero_artifact():
     p = load_panel(with_features=False)
     p["period"] = np.where(p["split"].isin(["train", "val"]), "train", np.where(p["split"] == "test", "test", None))
     m = p.dropna(subset=["period"]).groupby(["ticker", "period"])["excess_1d"].mean().unstack() * 1e4
-    fig, ax = plt.subplots(figsize=(9, 4.6))
-    x = np.arange(len(config.TICKERS))
-    ax.bar(x - 0.2, m.loc[config.TICKERS, "train"], 0.38, color="#2a78d6", label="train mean (1999-2009)",
-           edgecolor="white", linewidth=1)
-    ax.bar(x + 0.2, m.loc[config.TICKERS, "test"], 0.38, color="#eb6834", label="test mean (2010-2015)",
-           edgecolor="white", linewidth=1)
-    ax.axhline(0, color=INK2, linewidth=1)
-    ax.set_xticks(x, config.TICKERS)
-    ax.set_ylabel("mean 1-day excess return on FOMC days (bp)")
-    ax.set_title("Why 'predict 0' scores R² > 0: the train-period means don't carry over",
-                 loc="left", fontsize=13, color=INK)
-    ax.grid(axis="x", visible=False)
-    ax.legend(fontsize=9.5)
+    # Dumbbell: each sector's 1999-2009 mean (hollow) moves to its 2010-2015 mean (filled).
+    # The point of the slide is that almost every arrow heads toward 0.
+    names = {"XLB": "Materials", "XLE": "Energy", "XLF": "Financials", "XLI": "Industrials",
+             "XLK": "Tech", "XLP": "Staples", "XLU": "Utilities", "XLV": "Health care",
+             "XLY": "Cons. discretionary"}
+    m = m.loc[config.TICKERS].sort_values("train")
+    fig, ax = plt.subplots(figsize=(8.5, 5))
+    y = np.arange(len(m))
+    ax.axvline(0, color=INK, linewidth=1.5)
+    for yi, (tr, te) in zip(y, m[["train", "test"]].to_numpy()):
+        ax.annotate("", xy=(te, yi), xytext=(tr, yi),
+                    arrowprops=dict(arrowstyle="-|>", color=INK2, linewidth=1.4, shrinkA=6, shrinkB=6))
+    ax.scatter(m["train"], y, s=90, facecolor="white", edgecolor="#2a78d6", linewidth=2,
+               zorder=3, label="1999–2009 average (what R² compares against)")
+    ax.scatter(m["test"], y, s=90, color="#eb6834", zorder=3, label="2010–2015 average (what happened)")
+    ax.set_yticks(y, [f"{names[t]} ({t})" for t in m.index])
+    ax.set_xlabel("average 1-day excess return on Fed days (bp)")
+    ax.grid(axis="y", visible=False)
+    ax.legend(fontsize=10, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
+    ax.set_xlim(-55, 40)
     save(fig, "fig5_zero_artifact.png")
 
 
