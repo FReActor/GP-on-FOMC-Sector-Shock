@@ -8,7 +8,7 @@ panel, and writes PNGs to results/figures/:
     fig3_overfit.png          GP per-ticker seed-runs: train r2 vs test r2_oos (slide 9)
     fig4_xle_formula.png      the XLE 1d formula Min(0.022/s^2, 0.0121/s) on the data (slide 9)
     fig5_zero_artifact.png    train-period vs test-period mean excess return per ticker (slide 10)
-    fig6_feature_usage.png    share of GP v1 seed-runs using each input (slide 11)
+    fig6_feature_usage.png    share of GP2 seed-runs using each input (slide 11)
 
 Run from the repo root:
     python -m src.plots
@@ -33,7 +33,11 @@ MODELS = ["zero", "linear", "linear_interact", "gp_v0", "gp_v1"]
 COLORS = {"zero": "#9a9893", "linear": "#2a78d6", "linear_interact": "#eb6834",
           "gp_v0": "#1baf7a", "gp_v1": "#6250d6"}
 LABELS = {"zero": "zero forecast", "linear": "linear", "linear_interact": "linear + features",
-          "gp_v0": "GP v0 (surprise only)", "gp_v1": "GP v1 (+ features)"}
+          "gp_v0": "GP1 (surprise only)", "gp_v1": "GP2 (+ features)"}
+# Slide names: gp_v0 is presented as GP1, gp_v1 as GP2.
+SHORT = {"linear": "Linear", "linear_interact": "Linear\n+ features",
+         "gp_v0": "GP1\n(surprise only)", "gp_v1": "GP2\n(+ features)"}
+MUTED = {"linear": "#a9c6ea", "linear_interact": "#f5bfa6", "gp_v0": "#a6dcc6"}
 DIVERGING = LinearSegmentedColormap.from_list("div", ["#c8362f", "#f3f2ef", "#2a78d6"])
 
 plt.rcParams.update({
@@ -52,23 +56,28 @@ def save(fig, name):
 
 
 def fig1_pooled(summary):
-    s = summary[summary["ticker"] == "POOLED"]
-    fig, ax = plt.subplots(figsize=(9, 4.8))
-    width = 0.16
-    for i, m in enumerate(MODELS):
-        vals = [float(s[(s.model == m) & (s.horizon == h)]["r2_oos"].iloc[0]) for h in config.HORIZONS]
-        x = np.arange(len(config.HORIZONS)) + (i - 2) * (width + 0.01)
-        ax.bar(x, vals, width, color=COLORS[m], label=LABELS[m], edgecolor="white", linewidth=1)
-        for xi, v in zip(x, vals):
-            ax.text(xi, v + (0.002 if v >= 0 else -0.002), f"{v:+.3f}", ha="center",
-                    va="bottom" if v >= 0 else "top", fontsize=8.5, color=INK2)
+    """Pooled 1-day result: the zero forecast is drawn as the bar to clear, not as another model.
+    GP2 (the main model) in full color, the others muted. 5-day is left to the slide text
+    (every model is within 0.01 of zero there)."""
+    s = summary[(summary["ticker"] == "POOLED") & (summary["horizon"] == "1d")]
+    r2 = {m: float(s[s.model == m]["r2_oos"].iloc[0]) for m in MODELS}
+    models = MODELS[1:]
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    x = np.arange(len(models))
+    for xi, m in zip(x, models):
+        color = COLORS[m] if m == "gp_v1" else MUTED[m]
+        ax.bar(xi, r2[m], 0.6, color=color, edgecolor="white", linewidth=1)
+        ax.text(xi, r2[m] - 0.003, f"{r2[m]:+.3f}", ha="center", va="top", fontsize=12,
+                color="white" if m == "gp_v1" else INK, fontweight="bold" if m == "gp_v1" else None)
+    ax.axhline(r2["zero"], color=INK, linewidth=2, linestyle="--")
+    ax.text(len(models) - 0.5, r2["zero"] + 0.002, f"always predict 0 = {r2['zero']:+.3f}",
+            ha="right", va="bottom", fontsize=12, color=INK, fontweight="bold")
     ax.axhline(0, color=INK2, linewidth=1)
-    ax.set_xticks(range(len(config.HORIZONS)), ["1-day excess return", "5-day excess return"])
-    ax.set_ylabel("test r2_oos (2010-2015)")
-    ax.set_title("Pooled model: nothing beats always predicting 0", loc="left", fontsize=14, color=INK)
+    ax.set_xticks(x, [SHORT[m] for m in models], fontsize=12)
+    ax.set_ylabel("test R²_OOS, 1-day (2010-2015)")
     ax.grid(axis="x", visible=False)
-    ax.legend(ncol=3, loc="upper right", fontsize=9.5)
-    ax.set_ylim(-0.01, 0.11)
+    ax.set_ylim(0, 0.1)
+    ax.set_xlim(-0.5, len(models) - 0.5)
     save(fig, "fig1_pooled_r2.png")
 
 
@@ -203,8 +212,8 @@ def fig6_features():
                 edgecolor="white", linewidth=1)
     ax.set_yticks(y, [c if c != "constant" else "no input (constant)" for c in cols])
     ax.invert_yaxis()
-    ax.set_xlabel("share of GP v1 per-sector seed-runs using the input (%)")
-    ax.set_title("GP v1 uses the features, mostly at 5 days, but they don't help on test",
+    ax.set_xlabel("share of GP2 per-sector seed-runs using the input (%)")
+    ax.set_title("GP2 uses the features, mostly at 5 days, but they don't help on test",
                  loc="left", fontsize=12.5, color=INK)
     ax.grid(axis="y", visible=False)
     ax.legend(fontsize=9.5, loc="center right")
