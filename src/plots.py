@@ -153,29 +153,38 @@ def fig4_xle():
     g = p[(p.ticker == "XLE") & (p.horizon == "1d") & (p.seed == 8)]
     ev = pd.read_csv(config.PROCESSED / "events.csv", parse_dates=["event_date"])[["event_date", "surprise_bp"]]
     g = g.merge(ev, on="event_date", how="left")
+    g = g[g["split"] != "unused"]  # 2016+ is locked for Stage 2; show only 1999-2015
     fig, ax = plt.subplots(figsize=(8.5, 5))
-    for split, color, lab in ((["train", "val"], "#2a78d6", "train events 1999-2009"),
-                              (["test"], "#eb6834", "test events 2010-2015")):
-        h = g[g["split"].isin(split)]
-        ax.scatter(h["surprise_bp"], h["y"] * 100, s=34, color=color, alpha=0.75, edgecolor="white",
-                   linewidth=1, label=lab)
+    # Background: every other Fed day in light gray. Foreground: the s = 0 days that drive the story.
+    rest = g[g.surprise_bp != 0]
+    ax.scatter(rest["surprise_bp"], rest["y"] * 100, s=26, color="#c9c7c1", edgecolor="white",
+               linewidth=0.8, label="other Fed days")
+    z = g[g.surprise_bp == 0].copy()
+    # Spread the s = 0 days sideways so they don't overlap: training to the left, test to the right.
+    # (The 3 training days sit at almost the same return, about -1.25%, which is what GP memorized.)
+    is_tr = z["split"] != "test"
+    z["x"] = 0.9
+    z.loc[is_tr, "x"] = -0.7 - 0.5 * np.arange(is_tr.sum())
+    for is_test, color, lab in ((False, "#2a78d6", "s = 0 days in training (1999–2009)"),
+                                (True, "#eb6834", "s = 0 days in test (2010–2015)")):
+        h = z[(z["split"] == "test") == is_test]
+        ax.scatter(h["x"], h["y"] * 100, s=80, color=color, edgecolor="white", linewidth=1, zorder=4,
+                   label=f"{lab}: {len(h)}")
     # gplearn's protected division returns 1 for x/0, so the formula is ~0 for s != 0 and
-    # jumps to -1% exactly when s == 0 (3 train events, 8 test events).
+    # jumps to -1% exactly when s == 0.
     curve = g.drop_duplicates("surprise_bp").sort_values("surprise_bp")
     for side in (curve[curve.surprise_bp < 0], curve[curve.surprise_bp > 0]):
-        ax.plot(side["surprise_bp"], side["yhat"] * 100, color=INK, linewidth=2)
+        ax.plot(side["surprise_bp"], side["yhat"] * 100, color=INK, linewidth=2.2)
     at0 = curve[curve.surprise_bp == 0]
-    ax.scatter(at0["surprise_bp"], at0["yhat"] * 100, s=120, marker="D", color=INK, zorder=5,
-               label="GP formula Min(0.022/s², 0.0121/s)")
-    ax.annotate("s = 0: protected division (x/0 = 1)\n→ predicts -1%", xy=(0, -1), xytext=(6, -4.5),
-                fontsize=9.5, color=INK, arrowprops=dict(arrowstyle="->", color=INK2))
-    n0 = g[g.surprise_bp == 0]["split"].replace("val", "train").value_counts()
-    ax.set_xlabel("Fed surprise s (2y yield change, bp)")
-    ax.set_ylabel("XLE 1-day excess return (%)")
-    ax.set_title(f"What GP 'learned' for energy: ~0 everywhere, -1% when s = 0\n"
-                 f"fit on {n0.get('train', 0)} train events with s = 0, scored on {n0.get('test', 0)} test ones; test R² = −0.41",
-                 loc="left", fontsize=13, color=INK)
-    ax.legend(fontsize=9.5, loc="lower left")
+    ax.scatter(at0["surprise_bp"], at0["yhat"] * 100, s=130, marker="D", color=INK, zorder=5,
+               label="GP formula: ~0, but −1% when s = 0")
+    ax.annotate("predicts −1% only when s = 0", xy=(0, -1), xytext=(5, -3.5),
+                fontsize=11, color=INK, arrowprops=dict(arrowstyle="->", color=INK))
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    ax.set_xlabel("Fed surprise s (bp)")
+    ax.set_ylabel("Energy (XLE) 1-day excess return (%)")
+    ax.set_ylim(-5, 5)
+    ax.legend(fontsize=9.5, loc="upper left")
     save(fig, "fig4_xle_formula.png")
 
 
@@ -212,18 +221,23 @@ def fig6_features():
     cols = ["surprise_bp", "vix", "slope_2s10s", "beta_1y", "mom_20d", "constant"]
     agg = {h: [np.average(u[u.horizon == h][c], weights=u[u.horizon == h]["n_seeds"]) for c in cols]
            for h in config.HORIZONS}
-    fig, ax = plt.subplots(figsize=(8.5, 4.4))
+    names = {"surprise_bp": "Fed surprise", "vix": "VIX", "slope_2s10s": "Yield-curve slope",
+             "beta_1y": "Beta (1y)", "mom_20d": "Momentum (20d)", "constant": "No input at all"}
+    fig, ax = plt.subplots(figsize=(8.5, 4.6))
     y = np.arange(len(cols))
-    for i, (h, color) in enumerate(zip(config.HORIZONS, ("#2a78d6", "#eb6834"))):
-        ax.barh(y + (i - 0.5) * 0.38, np.array(agg[h]) * 100, 0.36, color=color, label=f"{h} horizon",
-                edgecolor="white", linewidth=1)
-    ax.set_yticks(y, [c if c != "constant" else "no input (constant)" for c in cols])
+    for i, (h, color, lab) in enumerate(zip(config.HORIZONS, ("#2a78d6", "#eb6834"), ("1-day", "5-day"))):
+        vals = np.array(agg[h]) * 100
+        yy = y + (i - 0.5) * 0.38
+        ax.barh(yy, vals, 0.36, color=color, label=lab, edgecolor="white", linewidth=1)
+        for yi, v in zip(yy, vals):
+            ax.text(v + 1, yi, f"{v:.0f}%", va="center", fontsize=10, color=INK2)
+    ax.set_yticks(y, [names[c] for c in cols], fontsize=12)
+    ax.get_yticklabels()[0].set_fontweight("bold")  # the Fed surprise is the variable the project is about
     ax.invert_yaxis()
-    ax.set_xlabel("share of GP2 per-sector seed-runs using the input (%)")
-    ax.set_title("GP2 uses the features, mostly at 5 days, but they don't help on test",
-                 loc="left", fontsize=12.5, color=INK)
+    ax.set_xlabel("share of GP2 formulas that use the input (%)")
+    ax.set_xlim(0, 68)
     ax.grid(axis="y", visible=False)
-    ax.legend(fontsize=9.5, loc="center right")
+    ax.legend(fontsize=10.5, loc="upper right")
     save(fig, "fig6_feature_usage.png")
 
 
