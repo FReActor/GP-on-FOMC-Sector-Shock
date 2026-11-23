@@ -8,7 +8,7 @@ panel, and writes PNGs to results/figures/:
     fig3_overfit.png          GP per-ticker seed-runs: train r2 vs test r2_oos (slide 9)
     fig4_xle_formula.png      the XLE 1d formula Min(0.022/s^2, 0.0121/s) on the data (slide 9)
     fig5_zero_artifact.png    train-period vs test-period mean excess return per ticker (slide 10)
-    fig6_feature_usage.png    share of GP v1 seed-runs using each input (slide 11)
+    fig6_feature_usage.png    share of GP2 seed-runs using each input (slide 11)
 
 Run from the repo root:
     python -m src.plots
@@ -33,7 +33,11 @@ MODELS = ["zero", "linear", "linear_interact", "gp_v0", "gp_v1"]
 COLORS = {"zero": "#9a9893", "linear": "#2a78d6", "linear_interact": "#eb6834",
           "gp_v0": "#1baf7a", "gp_v1": "#6250d6"}
 LABELS = {"zero": "zero forecast", "linear": "linear", "linear_interact": "linear + features",
-          "gp_v0": "GP v0 (surprise only)", "gp_v1": "GP v1 (+ features)"}
+          "gp_v0": "GP1 (surprise only)", "gp_v1": "GP2 (+ features)"}
+# Slide names: gp_v0 is presented as GP1, gp_v1 as GP2.
+SHORT = {"linear": "Linear", "linear_interact": "Linear\n+ features",
+         "gp_v0": "GP1\n(surprise only)", "gp_v1": "GP2\n(+ features)"}
+MUTED = {"linear": "#a9c6ea", "linear_interact": "#f5bfa6", "gp_v0": "#a6dcc6"}
 DIVERGING = LinearSegmentedColormap.from_list("div", ["#c8362f", "#f3f2ef", "#2a78d6"])
 
 plt.rcParams.update({
@@ -52,23 +56,28 @@ def save(fig, name):
 
 
 def fig1_pooled(summary):
-    s = summary[summary["ticker"] == "POOLED"]
-    fig, ax = plt.subplots(figsize=(9, 4.8))
-    width = 0.16
-    for i, m in enumerate(MODELS):
-        vals = [float(s[(s.model == m) & (s.horizon == h)]["r2_oos"].iloc[0]) for h in config.HORIZONS]
-        x = np.arange(len(config.HORIZONS)) + (i - 2) * (width + 0.01)
-        ax.bar(x, vals, width, color=COLORS[m], label=LABELS[m], edgecolor="white", linewidth=1)
-        for xi, v in zip(x, vals):
-            ax.text(xi, v + (0.002 if v >= 0 else -0.002), f"{v:+.3f}", ha="center",
-                    va="bottom" if v >= 0 else "top", fontsize=8.5, color=INK2)
+    """Pooled 1-day result: the zero forecast is drawn as the bar to clear, not as another model.
+    GP2 (the main model) in full color, the others muted. 5-day is left to the slide text
+    (every model is within 0.01 of zero there)."""
+    s = summary[(summary["ticker"] == "POOLED") & (summary["horizon"] == "1d")]
+    r2 = {m: float(s[s.model == m]["r2_oos"].iloc[0]) for m in MODELS}
+    models = MODELS[1:]
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    x = np.arange(len(models))
+    for xi, m in zip(x, models):
+        color = COLORS[m] if m == "gp_v1" else MUTED[m]
+        ax.bar(xi, r2[m], 0.6, color=color, edgecolor="white", linewidth=1)
+        ax.text(xi, r2[m] - 0.003, f"{r2[m]:+.3f}", ha="center", va="top", fontsize=12,
+                color="white" if m == "gp_v1" else INK, fontweight="bold" if m == "gp_v1" else None)
+    ax.axhline(r2["zero"], color=INK, linewidth=2, linestyle="--")
+    ax.text(len(models) - 0.5, r2["zero"] + 0.002, f"always predict 0 = {r2['zero']:+.3f}",
+            ha="right", va="bottom", fontsize=12, color=INK, fontweight="bold")
     ax.axhline(0, color=INK2, linewidth=1)
-    ax.set_xticks(range(len(config.HORIZONS)), ["1-day excess return", "5-day excess return"])
-    ax.set_ylabel("test r2_oos (2010-2015)")
-    ax.set_title("Pooled model: nothing beats always predicting 0", loc="left", fontsize=14, color=INK)
+    ax.set_xticks(x, [SHORT[m] for m in models], fontsize=12)
+    ax.set_ylabel("R² on test years 2010–2015 (1-day)")
     ax.grid(axis="x", visible=False)
-    ax.legend(ncol=3, loc="upper right", fontsize=9.5)
-    ax.set_ylim(-0.01, 0.11)
+    ax.set_ylim(0, 0.1)
+    ax.set_xlim(-0.5, len(models) - 0.5)
     save(fig, "fig1_pooled_r2.png")
 
 
@@ -92,7 +101,7 @@ def fig2_heatmap(summary):
                      loc="left", fontsize=12, color=INK)
         ax.grid(False)
     cb = fig.colorbar(im, ax=axes, shrink=0.85, pad=0.02)
-    cb.set_label("r2_oos minus zero forecast (blue = better)")
+    cb.set_label("R² minus zero forecast (blue = better)")
     fig.suptitle("Per sector: most cells are worse than predicting 0", x=0.06, ha="left",
                  fontsize=14, color=INK)
     save(fig, "fig2_vs_zero_heatmap.png")
@@ -131,8 +140,8 @@ def fig3_overfit():
     ax.text(lim * 0.70, lim * 0.62, "test = train", color=INK2, fontsize=9, rotation=0)
     ax.axhline(0, color=INK2, linewidth=1)
     share = (d["r2_test"] < 0).mean()
-    ax.set_xlabel("r2 on training years (1999-2009)")
-    ax.set_ylabel("r2_oos on test years (2010-2015), clipped at -1")
+    ax.set_xlabel("R² on training years (1999–2009)")
+    ax.set_ylabel("R² on test years (2010–2015), clipped at −1")
     ax.set_title(f"GP formulas fit the past, not the future\n{share:.0%} of non-constant runs score below 0 on test",
                  loc="left", fontsize=13, color=INK)
     ax.legend(loc="lower right", fontsize=9.5)
@@ -144,29 +153,38 @@ def fig4_xle():
     g = p[(p.ticker == "XLE") & (p.horizon == "1d") & (p.seed == 8)]
     ev = pd.read_csv(config.PROCESSED / "events.csv", parse_dates=["event_date"])[["event_date", "surprise_bp"]]
     g = g.merge(ev, on="event_date", how="left")
+    g = g[g["split"] != "unused"]  # 2016+ is locked for Stage 2; show only 1999-2015
     fig, ax = plt.subplots(figsize=(8.5, 5))
-    for split, color, lab in ((["train", "val"], "#2a78d6", "train events 1999-2009"),
-                              (["test"], "#eb6834", "test events 2010-2015")):
-        h = g[g["split"].isin(split)]
-        ax.scatter(h["surprise_bp"], h["y"] * 100, s=34, color=color, alpha=0.75, edgecolor="white",
-                   linewidth=1, label=lab)
+    # Background: every other Fed day in light gray. Foreground: the s = 0 days that drive the story.
+    rest = g[g.surprise_bp != 0]
+    ax.scatter(rest["surprise_bp"], rest["y"] * 100, s=26, color="#c9c7c1", edgecolor="white",
+               linewidth=0.8, label="other Fed days")
+    z = g[g.surprise_bp == 0].copy()
+    # Spread the s = 0 days sideways so they don't overlap: training to the left, test to the right.
+    # (The 3 training days sit at almost the same return, about -1.25%, which is what GP memorized.)
+    is_tr = z["split"] != "test"
+    z["x"] = 0.9
+    z.loc[is_tr, "x"] = -0.7 - 0.5 * np.arange(is_tr.sum())
+    for is_test, color, lab in ((False, "#2a78d6", "s = 0 days in training (1999–2009)"),
+                                (True, "#eb6834", "s = 0 days in test (2010–2015)")):
+        h = z[(z["split"] == "test") == is_test]
+        ax.scatter(h["x"], h["y"] * 100, s=80, color=color, edgecolor="white", linewidth=1, zorder=4,
+                   label=f"{lab}: {len(h)}")
     # gplearn's protected division returns 1 for x/0, so the formula is ~0 for s != 0 and
-    # jumps to -1% exactly when s == 0 (3 train events, 8 test events).
+    # jumps to -1% exactly when s == 0.
     curve = g.drop_duplicates("surprise_bp").sort_values("surprise_bp")
     for side in (curve[curve.surprise_bp < 0], curve[curve.surprise_bp > 0]):
-        ax.plot(side["surprise_bp"], side["yhat"] * 100, color=INK, linewidth=2)
+        ax.plot(side["surprise_bp"], side["yhat"] * 100, color=INK, linewidth=2.2)
     at0 = curve[curve.surprise_bp == 0]
-    ax.scatter(at0["surprise_bp"], at0["yhat"] * 100, s=120, marker="D", color=INK, zorder=5,
-               label="GP formula Min(0.022/s², 0.0121/s)")
-    ax.annotate("s = 0: protected division (x/0 = 1)\n→ predicts -1%", xy=(0, -1), xytext=(6, -4.5),
-                fontsize=9.5, color=INK, arrowprops=dict(arrowstyle="->", color=INK2))
-    n0 = g[g.surprise_bp == 0]["split"].replace("val", "train").value_counts()
-    ax.set_xlabel("Fed surprise s (2y yield change, bp)")
-    ax.set_ylabel("XLE 1-day excess return (%)")
-    ax.set_title(f"What GP 'learned' for energy: ~0 everywhere, -1% when s = 0\n"
-                 f"fit on {n0.get('train', 0)} train events with s = 0, scored on {n0.get('test', 0)} test ones; test r2_oos = -0.41",
-                 loc="left", fontsize=13, color=INK)
-    ax.legend(fontsize=9.5, loc="lower left")
+    ax.scatter(at0["surprise_bp"], at0["yhat"] * 100, s=130, marker="D", color=INK, zorder=5,
+               label="GP formula: ~0, but −1% when s = 0")
+    ax.annotate("predicts −1% only when s = 0", xy=(0, -1), xytext=(5, -3.5),
+                fontsize=11, color=INK, arrowprops=dict(arrowstyle="->", color=INK))
+    ax.axhline(0, color=INK2, linewidth=0.8)
+    ax.set_xlabel("Fed surprise s (bp)")
+    ax.set_ylabel("Energy (XLE) 1-day excess return (%)")
+    ax.set_ylim(-5, 5)
+    ax.legend(fontsize=9.5, loc="upper left")
     save(fig, "fig4_xle_formula.png")
 
 
@@ -174,19 +192,26 @@ def fig5_zero_artifact():
     p = load_panel(with_features=False)
     p["period"] = np.where(p["split"].isin(["train", "val"]), "train", np.where(p["split"] == "test", "test", None))
     m = p.dropna(subset=["period"]).groupby(["ticker", "period"])["excess_1d"].mean().unstack() * 1e4
-    fig, ax = plt.subplots(figsize=(9, 4.6))
-    x = np.arange(len(config.TICKERS))
-    ax.bar(x - 0.2, m.loc[config.TICKERS, "train"], 0.38, color="#2a78d6", label="train mean (1999-2009)",
-           edgecolor="white", linewidth=1)
-    ax.bar(x + 0.2, m.loc[config.TICKERS, "test"], 0.38, color="#eb6834", label="test mean (2010-2015)",
-           edgecolor="white", linewidth=1)
-    ax.axhline(0, color=INK2, linewidth=1)
-    ax.set_xticks(x, config.TICKERS)
-    ax.set_ylabel("mean 1-day excess return on FOMC days (bp)")
-    ax.set_title("Why 'predict 0' scores r2_oos > 0: the train-period means don't carry over",
-                 loc="left", fontsize=13, color=INK)
-    ax.grid(axis="x", visible=False)
-    ax.legend(fontsize=9.5)
+    # Dumbbell: each sector's 1999-2009 mean (hollow) moves to its 2010-2015 mean (filled).
+    # The point of the slide is that almost every arrow heads toward 0.
+    names = {"XLB": "Materials", "XLE": "Energy", "XLF": "Financials", "XLI": "Industrials",
+             "XLK": "Tech", "XLP": "Staples", "XLU": "Utilities", "XLV": "Health care",
+             "XLY": "Cons. discretionary"}
+    m = m.loc[config.TICKERS].sort_values("train")
+    fig, ax = plt.subplots(figsize=(8.5, 5))
+    y = np.arange(len(m))
+    ax.axvline(0, color=INK, linewidth=1.5)
+    for yi, (tr, te) in zip(y, m[["train", "test"]].to_numpy()):
+        ax.annotate("", xy=(te, yi), xytext=(tr, yi),
+                    arrowprops=dict(arrowstyle="-|>", color=INK2, linewidth=1.4, shrinkA=6, shrinkB=6))
+    ax.scatter(m["train"], y, s=90, facecolor="white", edgecolor="#2a78d6", linewidth=2,
+               zorder=3, label="1999–2009 average (what R² compares against)")
+    ax.scatter(m["test"], y, s=90, color="#eb6834", zorder=3, label="2010–2015 average (what happened)")
+    ax.set_yticks(y, [f"{names[t]} ({t})" for t in m.index])
+    ax.set_xlabel("average 1-day excess return on Fed days (bp)")
+    ax.grid(axis="y", visible=False)
+    ax.legend(fontsize=10, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
+    ax.set_xlim(-55, 40)
     save(fig, "fig5_zero_artifact.png")
 
 
@@ -196,18 +221,23 @@ def fig6_features():
     cols = ["surprise_bp", "vix", "slope_2s10s", "beta_1y", "mom_20d", "constant"]
     agg = {h: [np.average(u[u.horizon == h][c], weights=u[u.horizon == h]["n_seeds"]) for c in cols]
            for h in config.HORIZONS}
-    fig, ax = plt.subplots(figsize=(8.5, 4.4))
+    names = {"surprise_bp": "Fed surprise", "vix": "VIX", "slope_2s10s": "Yield-curve slope",
+             "beta_1y": "Beta (1y)", "mom_20d": "Momentum (20d)", "constant": "No input at all"}
+    fig, ax = plt.subplots(figsize=(8.5, 4.6))
     y = np.arange(len(cols))
-    for i, (h, color) in enumerate(zip(config.HORIZONS, ("#2a78d6", "#eb6834"))):
-        ax.barh(y + (i - 0.5) * 0.38, np.array(agg[h]) * 100, 0.36, color=color, label=f"{h} horizon",
-                edgecolor="white", linewidth=1)
-    ax.set_yticks(y, [c if c != "constant" else "no input (constant)" for c in cols])
+    for i, (h, color, lab) in enumerate(zip(config.HORIZONS, ("#2a78d6", "#eb6834"), ("1-day", "5-day"))):
+        vals = np.array(agg[h]) * 100
+        yy = y + (i - 0.5) * 0.38
+        ax.barh(yy, vals, 0.36, color=color, label=lab, edgecolor="white", linewidth=1)
+        for yi, v in zip(yy, vals):
+            ax.text(v + 1, yi, f"{v:.0f}%", va="center", fontsize=10, color=INK2)
+    ax.set_yticks(y, [names[c] for c in cols], fontsize=12)
+    ax.get_yticklabels()[0].set_fontweight("bold")  # the Fed surprise is the variable the project is about
     ax.invert_yaxis()
-    ax.set_xlabel("share of GP v1 per-sector seed-runs using the input (%)")
-    ax.set_title("GP v1 uses the features, mostly at 5 days, but they don't help on test",
-                 loc="left", fontsize=12.5, color=INK)
+    ax.set_xlabel("share of GP2 formulas that use the input (%)")
+    ax.set_xlim(0, 68)
     ax.grid(axis="y", visible=False)
-    ax.legend(fontsize=9.5, loc="center right")
+    ax.legend(fontsize=10.5, loc="upper right")
     save(fig, "fig6_feature_usage.png")
 
 

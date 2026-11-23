@@ -1,67 +1,75 @@
-# gp-macro-shocks
+# GP for Economic Shock Prediction
 
-SFIC Fall 2026: can genetic programming predict how sectors react to unexpected macro shocks (starting with FOMC rate surprises)?
+**Can genetic programming (symbolic regression) find a formula that predicts how each sector reacts to an FOMC rate surprise, better than a linear model?**
 
-Plans:
-- Club presentation (weeks 6–10): [docs/STAGE1_PLAN.md](docs/STAGE1_PLAN.md)
-- Full two-stage plan to the GECCO 2027 paper: [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)
-- Architecture and research design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+A Fall 2026 research project of the Student Foundation Investment Committee (SFIC).
 
-## Layout
+## Background
+
+**FOMC surprises.** Markets price the expected FOMC rate decision in advance, so prices move only on the *surprise*. The same surprise hits sectors differently: rate-sensitive sectors such as utilities move more than the market. We ask whether that sector reaction, relative to SPY, can be predicted from what is known before the announcement.
+
+**Genetic programming (GP).** GP is a form of symbolic regression: it searches over mathematical expressions instead of fitting coefficients of a fixed model. Each candidate is a formula tree built from inputs, constants and operators (`+ − × ÷ min max abs`). A population of 1,000 random formulas is evolved for 40 generations: the formulas with the lowest error are selected, then recombined (crossover swaps subtrees between two formulas) and mutated. A parsimony penalty on formula length keeps the trees short. The output is a readable formula such as `0.162 × beta_1y` instead of a black box, so any non-linear structure (thresholds, interactions) that GP finds can be inspected. The risk is the flip side of that flexibility: with ~90 training events per sector, GP can fit noise.
+
+**Benchmarks.** GP has to beat simple alternatives on unseen years: a zero forecast (sector moves with the market), the sector's training-period mean, and OLS regressions on the same inputs.
+
+## Results
+
+GP does not beat the simple benchmarks. The table shows out-of-sample R² on the 2010-2015 test years for the 1-day reaction, with one model fit across all sectors.
+
+| model | R² test |
+|---|---:|
+| zero forecast (predict 0) | +0.080 |
+| GP1 (surprise only) | +0.080 |
+| linear (OLS) | +0.076 |
+| GP2 (surprise + features) | +0.074 |
+
+GP1 collapses to a constant in every seed, so it ties the zero forecast. Per sector, GP2 beats the zero forecast in 4 of 18 (sector, horizon) cells, about what luck gives; the formulas that fit in-sample are the ones that fail out of sample. Positive R² here comes from the benchmark (the per-sector train mean), not from signal. Full numbers: [results/summary.csv](results/summary.csv).
+
+## Data and method
+
+- **Events:** 222 FOMC announcements, 1999-2025 ([data/reference/fomc_dates.csv](data/reference/fomc_dates.csv)).
+- **Shock:** `surprise_bp`, the announcement-day change in the 2-year Treasury yield (FRED DGS2), in bp.
+- **Target:** sector ETF return minus SPY, 1-day and 5-day, for the 9 SPDR sector ETFs (XLRE and XLC are too young for this split).
+- **Features (GP2):** `vix`, `slope_2s10s`, `beta_1y`, `mom_20d`, all known before the announcement.
+- **Split A:** train 1999-2006, validation 2007-2009 (picks GP parsimony), test 2010-2015. 2016+ is held out for Stage 2.
+- **Models:** gplearn `SymbolicRegressor` (pop 1000, 40 generations, 10 seeds; settings in [src/config.py](src/config.py)), pooled and per-sector; baselines: zero, train mean, OLS, OLS with surprise interactions.
+
+**Every evolved formula**, with its train and test R², is in [formulas/](formulas/).
+
+## Repo structure
 
 ```
-data/raw/          downloaded data (not in git)
-data/processed/    built tables (not in git)
-src/fetch_data.py      download prices (yfinance) and macro series (FRED)
-src/build_events.py    one row per shock event
-src/build_returns.py   asset returns around each event (target)
-src/build_features.py  inputs known before each event
-src/data_report.py     data sanity report -> results/
-src/config.py          shared paths, split (A/B), tickers, seeds: import from here
-src/data.py            load_panel() and the shared metrics (r2_oos, rmse, hit_rate)
-src/models/            models (linear baseline, GP, ...)
-notebooks/         exploration
-results/           reports, tables, figures
-tests/             pytest (runs on every PR via .github/workflows/tests.yml)
-docs/lit_review/   literature review
+data/reference/      FOMC dates (in git)
+data/raw, processed/ downloaded and built data (gitignored, rebuilt by the pipeline)
+src/                 pipeline: fetch_data, build_events, build_returns, build_features
+src/models/          gp.py, linear.py, linear_interact.py
+src/compare.py       all models + reference rows -> results/summary.csv
+src/plots.py, interpret.py, export_formulas.py   figures, formula analysis, formulas/ export
+results/             tables, per-event predictions (preds/), figures/
+formulas/            every GP formula as LaTeX (markdown) + CSV
+docs/                plans, write-up, data dictionary (data_interface.md)
+tests/               pytest, run in CI on every PR
 ```
 
-## Setup
+## Reproduce
 
 ```
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-## Run
-
-From the repo root, in order:
-
-```
-python -m src.fetch_data
+python -m src.fetch_data          # Yahoo prices + FRED CSVs, no API key
 python -m src.build_events
 python -m src.build_returns
 python -m src.build_features
-python -m src.data_report      # results/data_report.md + histogram
-pytest                         # tests; real-data tests skip until the steps above have run
-python -m src.models.gp --version v0   # ~25 min on 8 cores; resumes if interrupted
-python -m src.models.gp --version v1 --scope pooled   # or --scope ticker, to split v1 across two machines
-python -m src.models.linear    # linear baseline -> results/linear.csv
-python -m src.compare          # all models + zero/train_mean -> results/summary.csv
-python -m src.interpret        # which features GP uses, v1 vs v0 -> results/gp_interpretation.md
+python -m src.models.linear
+python -m src.models.linear_interact
+python -m src.models.gp --version v0          # GP1, ~25 min on 8 cores
+python -m src.models.gp --version v1          # GP2, several hours; --scope pooled|tickers to split
+python -m src.compare
+python -m src.plots
+python -m src.export_formulas
+pytest
 ```
 
-GP v1 can be split across two machines (same `config.GP` settings on both):
-
-```
-python -m src.models.gp --version v1 --scope tickers --quick   # ~30 s smoke test, writes to data/processed/gp_quick/
-python -m src.models.gp --version v1 --scope pooled            # machine 1 -> results/gp_v1*.csv
-python -m src.models.gp --version v1 --scope tickers           # machine 2 -> results/gp_v1_per_ticker*.csv
-```
-
-Column definitions: [docs/data_interface.md](docs/data_interface.md). Data checks: [results/data_report.md](results/data_report.md).
-
-## Working together
-
-Commit to a branch and open a pull request into `main`; ask a teammate to review.
+Seeds are fixed (`config.SEEDS` = 0-9), so GP runs repeat exactly given the same data. Yahoo may revise prices, so rebuilt data can differ slightly from the frozen results (tag `stage1-freeze`).
