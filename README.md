@@ -2,9 +2,17 @@
 
 SFIC Fall 2026. **Can genetic programming (symbolic regression) find a formula that predicts how each sector reacts to an FOMC rate surprise, better than a linear model?**
 
-## TL;DR
+## Background
 
-No, not at this data scale. Out-of-sample R² on 2010-2015, pooled over sectors, 1-day horizon:
+**FOMC surprises.** Eight times a year (plus occasional emergency meetings) the Fed's FOMC announces its rate decision. Markets price the expected decision in advance, so prices move only on the *surprise*: the part of the announcement the market did not expect. Sectors react differently to the same surprise. Rate-sensitive sectors such as utilities and real estate tend to move more than the market, while others barely react. If that sector-level reaction is predictable from what is known before the announcement (the size of the surprise, VIX, the yield-curve slope, the sector's beta and momentum), it can be traded as a relative-value position against SPY.
+
+**Genetic programming (GP).** GP is a form of symbolic regression: it searches over mathematical expressions instead of fitting coefficients of a fixed model. Each candidate is a formula tree built from inputs, constants and operators (`+ − × ÷ min max abs`). A population of 1,000 random formulas is evolved for 40 generations: the formulas with the lowest error are selected, then recombined (crossover swaps subtrees between two formulas) and mutated. A parsimony penalty on formula length keeps the trees short. The output is a readable formula such as `0.162 × beta_1y` instead of a black box, so any non-linear structure (thresholds, interactions) that GP finds can be inspected. The risk is the flip side of that flexibility: with ~90 training events per sector, GP can fit noise.
+
+**Benchmarks.** GP has to beat simple alternatives on unseen years: a zero forecast (sector moves with the market), the sector's training-period mean, and OLS regressions on the same inputs.
+
+## Results
+
+Not at this data scale. Out-of-sample R² on 2010-2015, pooled over sectors, 1-day horizon:
 
 | model | R² test |
 |---|---:|
@@ -13,7 +21,7 @@ No, not at this data scale. Out-of-sample R² on 2010-2015, pooled over sectors,
 | linear (OLS) | +0.076 |
 | GP2 (surprise + features) | +0.074 |
 
-GP1 collapses to a constant in every seed, so it ties the zero forecast. Per sector, GP2 beats the zero forecast in 4 of 18 (sector, horizon) cells, about what luck gives; the formulas that fit in-sample are the ones that fail out of sample. Positive R² here comes from the benchmark (the per-sector train mean), not from signal. Full numbers: [results/summary.csv](results/summary.csv); write-up: [docs/stage1_writeup.md](docs/stage1_writeup.md).
+GP1 collapses to a constant in every seed, so it ties the zero forecast. Per sector, GP2 beats the zero forecast in 4 of 18 (sector, horizon) cells, about what luck gives; the formulas that fit in-sample are the ones that fail out of sample. Positive R² here comes from the benchmark (the per-sector train mean), not from signal. Full numbers: [results/summary.csv](results/summary.csv).
 
 ## Data and method
 
@@ -66,4 +74,4 @@ Seeds are fixed (`config.SEEDS` = 0-9), so GP runs repeat exactly given the same
 
 ## Team
 
-Leads: Razeen Khan, Benny Signer. Members: Charles Cheng, Snata Mohanty, Abhishai Ganta. References and the Stage 2 plan (GECCO 2027): [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md).
+Leads: Razeen Khan, Benny Signer. Members: Charles Cheng, Snata Mohanty, Abhishai Ganta.
