@@ -1,6 +1,5 @@
-# GP for Economic Shock Prediction
+# GP for Economic Shock Prediction, SFIC FA 26
 
-SFIC Fall 2026 project 
 **Can genetic programming (symbolic regression) find a formula that predicts how each sector reacts to an FOMC rate surprise, better than a linear model?**
 
 ## Background
