@@ -2,6 +2,8 @@
 
 **Can genetic programming (symbolic regression) find a formula that predicts how each sector reacts to an FOMC rate surprise, better than a linear model?**
 
+A Fall 2026 research project of the Student Foundation Investment Committee (SFIC).
+
 ## Background
 
 **FOMC surprises.** Markets price the expected FOMC rate decision in advance, so prices move only on the *surprise*. The same surprise hits sectors differently: rate-sensitive sectors such as utilities move more than the market. We ask whether that sector reaction, relative to SPY, can be predicted from what is known before the announcement.
